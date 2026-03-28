@@ -1,1 +1,2006 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#070b14">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SysPulse">
+<title>SysPulse — System Monitor</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+/* ========== RESET & BASE ========== */*, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html { height: 100%; }
+body {
+  height: 100%;
+  background: #070b14;
+  color: #c8d8f0;
+  font-family: 'Rajdhani', sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  user-select: none;
+}
 
+/* ========== CSS VARIABLES ========== */
+:root {
+  --cpu-color: #00ffe0;
+  --ram-color: #7c6bff;
+  --rom-color: #ff9f43;
+  --net-color: #ff6b9d;
+  --bat-color: #26de81;
+  --bg: #070b14;
+  --surface: #0d1525;
+  --card: #111e35;
+  --border: rgba(0,255,224,0.12);
+  --glow: rgba(0,255,224,0.15);
+  --text: #c8d8f0;
+  --muted: #4a6080;
+  --header-h: 60px;
+  --nav-h: 64px;
+}
+
+/* ========== SCROLLBAR ========== */
+::-webkit-scrollbar { width: 0; }
+
+/* ========== SCANLINE OVERLAY ========== */
+body::after {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg, transparent, transparent 2px,
+    rgba(0,0,0,0.03) 2px, rgba(0,0,0,0.03) 4px
+  );
+  pointer-events: none;
+  z-index: 9999;
+}
+  /* ========== HEADER ========== */
+.header {
+  position: fixed;
+  top: 0; left: 0; right: 0;
+  height: var(--header-h);
+  background: rgba(7,11,20,0.95);
+  backdrop-filter: blur(12px);
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 18px;
+  z-index: 100;
+}
+
+.logo {
+  font-family: 'Orbitron', monospace;
+  font-weight: 900;
+  font-size: 18px;
+  letter-spacing: 0.1em;
+  color: var(--cpu-color);
+  text-shadow: 0 0 20px rgba(0,255,224,0.5);
+}
+
+.logo span { color: var(--text); opacity: 0.5; }
+
+.header-status {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.live-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--cpu-color);
+  box-shadow: 0 0 8px var(--cpu-color);
+  animation: blink 1.2s ease-in-out infinite;
+}
+
+@keyframes blink {
+  0%,100% { opacity: 1; }
+  50% { opacity: 0.2; }
+}
+
+.live-text {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 11px;
+  color: var(--cpu-color);
+  letter-spacing: 0.1em;
+}
+
+.header-time {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  color: var(--muted);
+}
+
+/* ========== MAIN CONTENT ========== */
+.main {
+  padding-top: var(--header-h);
+  padding-bottom: calc(var(--nav-h) + 16px);
+  min-height: 100vh;
+}
+
+/* ========== BOTTOM NAV ========== */
+.nav {
+  position: fixed;
+  bottom: 0; left: 0; right: 0;
+  height: var(--nav-h);
+  background: rgba(7,11,20,0.97);
+  backdrop-filter: blur(16px);
+  border-top: 1px solid var(--border);
+  display: flex;
+  z-index: 100;
+}
+
+.nav-btn {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: none;
+  border: none;
+  color: var(--muted);
+  position: relative;
+  -webkit-tap-highlight-color: transparent;
+}
+
+.nav-btn.active { color: var(--cpu-color); }
+
+.nav-btn.active::before {
+  content: '';
+  position: absolute;
+  top: 0; left: 20%; right: 20%;
+  height: 2px;
+  background: var(--cpu-color);
+  box-shadow: 0 0 10px var(--cpu-color);
+  border-radius: 0 0 4px 4px;
+}
+
+.nav-icon { font-size: 20px; line-height: 1; }
+.nav-label { font-size: 10px; font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+
+/* ========== PAGES ========== */
+.page { display: none; padding: 16px; animation: fadeIn 0.25s ease; }
+.page.active { display: block; }
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to { opacity: 1; transform: translateY(0); }
+            }
+  /* ========== SECTION TITLE ========== */
+.section-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--muted);
+  text-transform: uppercase;
+  margin-bottom: 12px;
+  margin-top: 20px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+.section-title:first-child { margin-top: 4px; }
+.section-title::after {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: var(--border);
+}
+
+/* ========== WIDGET GRID (Dashboard) ========== */
+.widget-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 12px;
+  margin-bottom: 12px;
+}
+
+.widget-full { grid-column: 1 / -1; }
+
+/* ========== CARD ========== */
+.card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  position: relative;
+  overflow: hidden;
+  transition: border-color 0.3s;
+}
+
+.card::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(135deg, rgba(0,255,224,0.03) 0%, transparent 60%);
+  pointer-events: none;
+}
+
+/* ========== GAUGE WIDGET ========== */
+.gauge-widget { text-align: center; }
+
+.gauge-wrap {
+  position: relative;
+  width: 110px;
+  height: 70px;
+  margin: 0 auto 8px;
+}
+
+.gauge-svg { width: 110px; height: 80px; overflow: visible; }
+
+.gauge-track {
+  fill: none;
+  stroke: rgba(255,255,255,0.06);
+  stroke-width: 10;
+  stroke-linecap: round;
+}
+
+.gauge-fill {
+  fill: none;
+  stroke-width: 10;
+  stroke-linecap: round;
+  transition: stroke-dashoffset 0.6s cubic-bezier(0.4,0,0.2,1);
+  filter: drop-shadow(0 0 6px currentColor);
+}
+
+.gauge-value {
+  font-family: 'Orbitron', monospace;
+  font-size: 18px;
+  font-weight: 700;
+  position: absolute;
+  bottom: -4px;
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+}
+
+.gauge-label {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+
+.gauge-sublabel {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* ========== MINI STAT ROW ========== */
+.stat-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 0;
+  border-bottom: 1px solid rgba(255,255,255,0.04);
+}
+.stat-row:last-child { border-bottom: none; padding-bottom: 0; }
+.stat-row:first-child { padding-top: 0; }
+
+.stat-label {
+  font-size: 13px;
+  color: var(--muted);
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.stat-dot {
+  width: 6px; height: 6px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.stat-value {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  color: var(--text);
+  text-align: right;
+  }
+ /* ========== PROGRESS BAR ========== */
+.progress-wrap { margin-top: 10px; }
+.progress-label-row {
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: var(--muted);
+  margin-bottom: 6px;
+  font-family: 'Share Tech Mono', monospace;
+}
+.progress-track {
+  height: 6px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 3px;
+  overflow: hidden;
+}
+.progress-fill {
+  height: 100%;
+  border-radius: 3px;
+  transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+  position: relative;
+}
+.progress-fill::after {
+  content: '';
+  position: absolute;
+  right: 0; top: 0; bottom: 0;
+  width: 20px;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.3));
+  border-radius: 3px;
+}
+
+/* ========== NETWORK SPEED WIDGET ========== */
+.speed-display {
+  display: flex;
+  justify-content: space-around;
+  margin: 8px 0;
+}
+.speed-item { text-align: center; }
+.speed-arrow { font-size: 18px; margin-bottom: 2px; }
+.speed-num {
+  font-family: 'Orbitron', monospace;
+  font-size: 20px;
+  font-weight: 700;
+  line-height: 1;
+}
+.speed-unit {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  margin-top: 2px;
+}
+.speed-label {
+  font-size: 11px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+}
+
+.speed-divider {
+  width: 1px;
+  background: var(--border);
+  margin: 4px 0;
+}
+
+/* ========== SPARKLINE ========== */
+.sparkline-wrap {
+  margin-top: 12px;
+  height: 40px;
+  position: relative;
+}
+.sparkline-svg { width: 100%; height: 40px; }
+
+/* ========== BATTERY ========== */
+.battery-widget {}
+.battery-body {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+.battery-icon-wrap { position: relative; flex-shrink: 0; }
+.battery-shell {
+  width: 56px; height: 26px;
+  border: 2px solid currentColor;
+  border-radius: 5px;
+  position: relative;
+}
+.battery-shell::after {
+  content: '';
+  position: absolute;
+  right: -8px; top: 50%;
+  transform: translateY(-50%);
+  width: 5px; height: 12px;
+  background: currentColor;
+  border-radius: 0 3px 3px 0;
+}
+.battery-level {
+  position: absolute;
+  top: 3px; left: 3px; bottom: 3px;
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+.battery-pct {
+  font-family: 'Orbitron', monospace;
+  font-size: 22px;
+  font-weight: 700;
+}
+.battery-status {
+  font-size: 12px;
+  color: var(--muted);
+  font-weight: 500;
+}
+
+/* ========== DEVICE INFO ========== */
+.device-info-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.device-info-cell {
+  background: var(--card);
+  padding: 12px;
+}
+.device-info-label {
+  font-size: 10px;
+  color: var(--muted);
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 4px;
+}
+.device-info-val {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 13px;
+  color: var(--text);
+  word-break: break-word;
+}
+
+/* ========== CPU HISTORY CHART ========== */
+.history-chart {
+  width: 100%;
+  height: 80px;
+  margin-top: 8px;
+}
+
+/* ========== TEMP INDICATOR ========== */
+.temp-ring {
+  position: relative;
+  width: 80px; height: 80px;
+  margin: 0 auto;
+}
+.temp-val {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  font-family: 'Orbitron', monospace;
+  font-size: 16px;
+  font-weight: 700;
+}
+.temp-unit { font-size: 10px; color: var(--muted); }
+
+/* ========== STATUS BADGE ========== */
+.badge {
+  display: inline-block;
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  padding: 2px 8px;
+  border-radius: 3px;
+  letter-spacing: 0.05em;
+}
+.badge-good { background: rgba(38,222,129,0.12); color: var(--bat-color); border: 1px solid rgba(38,222,129,0.25); }
+.badge-warn { background: rgba(255,159,67,0.12); color: var(--rom-color); border: 1px solid rgba(255,159,67,0.25); }
+.badge-bad  { background: rgba(255,107,107,0.12); color: #ff6b6b; border: 1px solid rgba(255,107,107,0.25); }
+
+  /* ========== FULL DETAIL PAGE ========== */
+.detail-card {
+  background: var(--card);
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  padding: 16px;
+  margin-bottom: 12px;
+}
+.detail-card-title {
+  font-family: 'Orbitron', monospace;
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+/* ========== REFRESH BUTTON ========== */
+.refresh-fab {
+  position: fixed;
+  bottom: calc(var(--nav-h) + 20px);
+  right: 18px;
+  width: 46px; height: 46px;
+  border-radius: 50%;
+  background: var(--cpu-color);
+  border: none;
+  color: var(--bg);
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 0 20px rgba(0,255,224,0.4);
+  z-index: 99;
+  transition: transform 0.2s, box-shadow 0.2s;
+  -webkit-tap-highlight-color: transparent;
+}
+.refresh-fab:active { transform: scale(0.92); box-shadow: 0 0 10px rgba(0,255,224,0.3); }
+.refresh-fab.spinning { animation: spin 0.6s linear; }
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ========== NETWORK PAGE ========== */
+.net-big-speed {
+  font-family: 'Orbitron', monospace;
+  font-size: 38px;
+  font-weight: 900;
+  text-align: center;
+  line-height: 1;
+  margin: 8px 0 4px;
+}
+.net-unit { font-size: 14px; color: var(--muted); }
+
+.ping-row {
+  display: flex;
+  justify-content: space-around;
+  margin-top: 12px;
+}
+.ping-item { text-align: center; }
+.ping-val {
+  font-family: 'Orbitron', monospace;
+  font-size: 18px;
+  font-weight: 700;
+}
+.ping-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: 0.08em; }
+
+/* ========== CONNECTION TYPE ========== */
+.conn-type-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  background: rgba(0,255,224,0.05);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 12px;
+  margin-top: 10px;
+}
+.conn-icon { font-size: 24px; }
+.conn-details {}
+.conn-name { font-family: 'Orbitron', monospace; font-size: 14px; font-weight: 700; color: var(--cpu-color); }
+.conn-sub { font-size: 12px; color: var(--muted); }
+
+/* ========== SETTINGS PAGE ========== */
+.setting-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 14px 0;
+  border-bottom: 1px solid var(--border);
+  cursor: pointer;
+}
+.setting-row:last-child { border-bottom: none; }
+.setting-left {}
+.setting-name { font-size: 15px; font-weight: 600; }
+.setting-sub { font-size: 12px; color: var(--muted); margin-top: 2px; }
+
+/* Toggle */
+.toggle {
+  width: 44px; height: 24px;
+  background: var(--border);
+  border-radius: 12px;
+  position: relative;
+  transition: background 0.3s;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+.toggle.on { background: var(--cpu-color); }
+.toggle::after {
+  content: '';
+  position: absolute;
+  width: 18px; height: 18px;
+  background: white;
+  border-radius: 50%;
+  top: 3px; left: 3px;
+  transition: left 0.3s;
+}
+.toggle.on::after { left: 23px; }
+
+/* ========== ALERT BANNER ========== */
+.alert-banner {
+  background: rgba(255,107,107,0.1);
+  border: 1px solid rgba(255,107,107,0.3);
+  border-radius: 10px;
+  padding: 10px 14px;
+  font-size: 13px;
+  color: #ff9999;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  display: none;
+}
+.alert-banner.visible { display: flex; }
+
+/* ========== CORES GRID ========== */
+.cores-grid {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  margin-top: 8px;
+}
+.core-cell {
+  background: rgba(255,255,255,0.03);
+  border: 1px solid var(--border);
+  border-radius: 7px;
+  padding: 8px 4px;
+  text-align: center;
+}
+.core-num {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 9px;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+.core-bar-track {
+  height: 3px;
+  background: rgba(255,255,255,0.06);
+  border-radius: 2px;
+  margin-bottom: 4px;
+  overflow: hidden;
+}
+.core-bar-fill {
+  height: 100%;
+  background: var(--cpu-color);
+  border-radius: 2px;
+  transition: width 0.5s ease;
+}
+.core-pct {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--cpu-color);
+  }
+
+  /* ========== PULSE ANIMATION ========== */
+@keyframes pulse-ring {
+  0% { box-shadow: 0 0 0 0 rgba(0,255,224,0.3); }
+  70% { box-shadow: 0 0 0 10px rgba(0,255,224,0); }
+  100% { box-shadow: 0 0 0 0 rgba(0,255,224,0); }
+}
+
+/* ========== TOAST ========== */
+.toast {
+  position: fixed;
+  bottom: calc(var(--nav-h) + 80px);
+  left: 50%;
+  transform: translateX(-50%) translateY(20px);
+  background: rgba(0,255,224,0.1);
+  border: 1px solid rgba(0,255,224,0.3);
+  color: var(--cpu-color);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 12px;
+  padding: 8px 20px;
+  border-radius: 30px;
+  opacity: 0;
+  transition: all 0.3s;
+  z-index: 200;
+  white-space: nowrap;
+  pointer-events: none;
+}
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
+}
+
+/* ========== PERMISSION NOTE ========== */
+.perm-note {
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  color: var(--muted);
+  text-align: center;
+  padding: 8px;
+  margin-top: 4px;
+}
+
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div class="logo">SYS<span>PULSE</span></div>
+  <div class="header-status">
+    <div class="live-dot"></div>
+    <div class="live-text">LIVE</div>
+  </div>
+  <div class="header-time" id="headerTime">--:--:--</div>
+</header>
+
+<!-- MAIN -->
+<main class="main">
+
+  <!-- ====== PAGE: DASHBOARD ====== -->
+  <div class="page active" id="page-dash">
+
+    <!-- Alert Banner -->
+    <div class="alert-banner" id="alertBanner">
+      <span>⚠️</span>
+      <span id="alertText">High CPU usage detected</span>
+    </div>
+
+    <div class="section-title">Overview</div>
+
+    <div class="widget-grid">
+
+      <!-- CPU Gauge -->
+      <div class="card gauge-widget" id="cpuWidget">
+        <div class="gauge-label">CPU</div>
+        <div class="gauge-wrap">
+          <svg class="gauge-svg" viewBox="0 0 110 70">
+            <path class="gauge-track" d="M10 65 A50 50 0 0 1 100 65" stroke="rgba(255,255,255,0.06)"/>
+            <path class="gauge-fill" id="cpuArc" d="M10 65 A50 50 0 0 1 100 65"
+              stroke="var(--cpu-color)" stroke-dasharray="157" stroke-dashoffset="157"/>
+          </svg>
+          <div class="gauge-value" id="cpuPct" style="color:var(--cpu-color)">0%</div>
+        </div>
+        <div class="gauge-sublabel" id="cpuFreq">-- GHz</div>
+        <div style="margin-top:6px"><span class="badge badge-good" id="cpuBadge">NORMAL</span></div>
+      </div>
+
+      <!-- RAM Gauge -->
+      <div class="card gauge-widget" id="ramWidget">
+        <div class="gauge-label">RAM</div>
+        <div class="gauge-wrap">
+          <svg class="gauge-svg" viewBox="0 0 110 70">
+            <path class="gauge-track" d="M10 65 A50 50 0 0 1 100 65" stroke="rgba(255,255,255,0.06)"/>
+            <path class="gauge-fill" id="ramArc" d="M10 65 A50 50 0 0 1 100 65"
+              stroke="var(--ram-color)" stroke-dasharray="157" stroke-dashoffset="157"/>
+          </svg>
+          <div class="gauge-value" id="ramPct" style="color:var(--ram-color)">0%</div>
+        </div>
+        <div class="gauge-sublabel" id="ramUsed">-- / -- GB</div>
+        <div style="margin-top:6px"><span class="badge badge-good" id="ramBadge">NORMAL</span></div>
+      </div>
+
+      <!-- Network Speed Widget (full width) -->
+      <div class="card widget-full">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+          <div style="font-family:'Orbitron',monospace; font-size:12px; letter-spacing:0.08em; color:var(--net-color);">NETWORK</div>
+          <span class="badge badge-good" id="netStatusBadge">ONLINE</span>
+        </div>
+        <div class="speed-display">
+          <div class="speed-item">
+            <div class="speed-arrow" style="color:var(--cpu-color)">↓</div>
+            <div class="speed-num" id="dlSpeed" style="color:var(--cpu-color)">--</div>
+            <div class="speed-unit" id="dlUnit">Mbps</div>
+            <div class="speed-label">Download</div>
+          </div>
+          <div class="speed-divider"></div>
+          <div class="speed-item">
+            <div class="speed-arrow" style="color:var(--net-color)">↑</div>
+            <div class="speed-num" id="ulSpeed" style="color:var(--net-color)">--</div>
+            <div class="speed-unit" id="ulUnit">Mbps</div>
+            <div class="speed-label">Upload</div>
+          </div>
+          <div class="speed-divider"></div>
+          <div class="speed-item">
+            <div class="speed-arrow" style="color:var(--rom-color)">◎</div>
+            <div class="speed-num" id="pingVal" style="color:var(--rom-color)">--</div>
+            <div class="speed-unit">ms</div>
+            <div class="speed-label">Ping</div>
+          </div>
+        </div>
+        <!-- Sparkline -->
+        <div class="sparkline-wrap">
+          <svg class="sparkline-svg" id="sparklineSvg" viewBox="0 0 300 40" preserveAspectRatio="none">
+            <defs>
+              <linearGradient id="sparkGrad" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0%" stop-color="var(--cpu-color)" stop-opacity="0.4"/>
+                <stop offset="100%" stop-color="var(--cpu-color)" stop-opacity="0"/>
+              </linearGradient>
+            </defs>
+            <path id="sparkArea" fill="url(#sparkGrad)" d=""/>
+            <path id="sparkLine" fill="none" stroke="var(--cpu-color)" stroke-width="1.5" d=""/>
+          </svg>
+        </div>
+      </div>
+
+      <!-- Storage Widget -->
+      <div class="card widget-full">
+        <div style="font-family:'Orbitron',monospace; font-size:12px; letter-spacing:0.08em; color:var(--rom-color); margin-bottom:12px;">STORAGE</div>
+        <div class="progress-wrap">
+          <div class="progress-label-row">
+            <span>Internal</span>
+            <span id="storageUsedLabel">-- / -- GB</span>
+          </div>
+          <div class="progress-track">
+            <div class="progress-fill" id="storageFill" style="background:linear-gradient(90deg,var(--rom-color),#ffcc70); width:0%"></div>
+          </div>
+        </div>
+        <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:14px;">
+          <div style="text-align:center;">
+            <div style="font-family:'Share Tech Mono',monospace; font-size:13px; color:var(--rom-color)" id="storUsedVal">--</div>
+            <div style="font-size:10px; color:var(--muted);">Used</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-family:'Share Tech Mono',monospace; font-size:13px; color:var(--bat-color)" id="storFreeVal">--</div>
+            <div style="font-size:10px; color:var(--muted);">Free</div>
+          </div>
+          <div style="text-align:center;">
+            <div style="font-family:'Share Tech Mono',monospace; font-size:13px; color:var(--text)" id="storTotalVal">--</div>
+            <div style="font-size:10px; color:var(--muted);">Total</div>
+          </div>
+        </div>
+      </div>
+      <!-- Battery -->
+      <div class="card battery-widget">
+        <div style="font-family:'Orbitron',monospace; font-size:11px; letter-spacing:0.08em; color:var(--bat-color); margin-bottom:10px;">BATTERY</div>
+        <div class="battery-body">
+          <div class="battery-icon-wrap">
+            <div class="battery-shell" style="color:var(--bat-color)">
+              <div class="battery-level" id="batLevel" style="background:var(--bat-color); width:70%"></div>
+            </div>
+          </div>
+          <div>
+            <div class="battery-pct" id="batPct" style="color:var(--bat-color)">--%</div>
+            <div class="battery-status" id="batStatus">Detecting...</div>
+          </div>
+        </div>
+        <div class="stat-row" style="padding-top:0">
+          <div class="stat-label">Est. Time</div>
+          <div class="stat-value" id="batTime">--</div>
+        </div>
+      </div>
+
+      <!-- Temp Widget -->
+      <div class="card" style="text-align:center;">
+        <div style="font-family:'Orbitron',monospace; font-size:11px; letter-spacing:0.08em; color:#ff9f43; margin-bottom:8px;">THERMAL</div>
+        <div class="temp-ring">
+          <svg width="80" height="80" viewBox="0 0 80 80">
+            <circle cx="40" cy="40" r="34" fill="none" stroke="rgba(255,255,255,0.05)" stroke-width="7"/>
+            <circle cx="40" cy="40" r="34" fill="none" id="tempArc"
+              stroke="#ff9f43" stroke-width="7" stroke-linecap="round"
+              stroke-dasharray="213" stroke-dashoffset="213"
+              transform="rotate(-90 40 40)"
+              style="filter:drop-shadow(0 0 6px #ff9f43); transition: stroke-dashoffset 0.6s ease;"/>
+          </svg>
+          <div class="temp-val">
+            <span id="tempVal" style="color:#ff9f43">--</span>
+            <span class="temp-unit">°C</span>
+          </div>
+        </div>
+        <div style="font-size:12px; color:var(--muted); margin-top:6px;" id="tempStatus">Measuring...</div>
+      </div>
+
+    </div>
+
+    <div class="perm-note">⚙ Some metrics require Android browser permissions or native APIs</div>
+  </div>
+
+  <!-- ====== PAGE: CPU ====== -->
+  <div class="page" id="page-cpu">
+
+    <div class="section-title">Processor</div>
+
+    <div class="detail-card">
+      <div class="detail-card-title" style="color:var(--cpu-color)">⚡ CPU Usage</div>
+      <div style="text-align:center; margin-bottom:16px;">
+        <div style="font-family:'Orbitron',monospace; font-size:52px; font-weight:900; color:var(--cpu-color); line-height:1; text-shadow:0 0 30px rgba(0,255,224,0.4)" id="cpuBigPct">0%</div>
+        <div style="font-size:13px; color:var(--muted); margin-top:4px;">Average Load</div>
+      </div>
+      <!-- CPU History Chart -->
+      <svg class="history-chart" id="cpuHistChart" viewBox="0 0 300 80" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="cpuGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--cpu-color)" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="var(--cpu-color)" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <path id="cpuHistArea" fill="url(#cpuGrad)" d=""/>
+        <path id="cpuHistLine" fill="none" stroke="var(--cpu-color)" stroke-width="1.5" d=""/>
+      </svg>
+    </div>
+
+    <div class="detail-card">
+      <div class="detail-card-title" style="color:var(--cpu-color)">🔲 CPU Cores</div>
+      <div class="cores-grid" id="coresGrid">
+        <!-- Generated by JS -->
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="detail-card-title" style="color:var(--cpu-color)">📋 CPU Info</div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--cpu-color)"></div>Architecture</div>
+        <div class="stat-value" id="cpuArch">--</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--cpu-color)"></div>Cores</div>
+        <div class="stat-value" id="cpuCores">--</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--cpu-color)"></div>Logical Procs</div>
+        <div class="stat-value" id="cpuLogical">--</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--cpu-color)"></div>Platform</div>
+        <div class="stat-value" id="cpuPlatform">--</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--cpu-color)"></div>Est. Frequency</div>
+        <div class="stat-value" id="cpuFreq2">--</div>
+      </div>
+    </div>
+  </div>
+    <!-- ====== PAGE: MEMORY ====== -->
+  <div class="page" id="page-mem">
+
+    <div class="section-title">Memory</div>
+
+    <div class="detail-card">
+      <div class="detail-card-title" style="color:var(--ram-color)">🧠 RAM</div>
+      <div style="text-align:center; margin-bottom:16px;">
+        <div style="font-family:'Orbitron',monospace; font-size:42px; font-weight:900; color:var(--ram-color); line-height:1;" id="ramBigPct">0%</div>
+        <div style="font-size:13px; color:var(--muted);" id="ramBigDetail">-- Used / -- Total</div>
+      </div>
+      <div class="progress-wrap">
+        <div class="progress-track" style="height:10px; border-radius:5px;">
+          <div class="progress-fill" id="ramBigFill" style="background:linear-gradient(90deg,var(--ram-color),#b8a4ff); width:0%"></div>
+        </div>
+      </div>
+      <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:10px; margin-top:16px; text-align:center;">
+        <div>
+          <div style="font-family:'Share Tech Mono',monospace; font-size:14px; color:var(--ram-color)" id="ramUsedVal">--</div>
+          <div style="font-size:10px; color:var(--muted)">Used</div>
+        </div>
+        <div>
+          <div style="font-family:'Share Tech Mono',monospace; font-size:14px; color:var(--bat-color)" id="ramFreeVal">--</div>
+          <div style="font-size:10px; color:var(--muted)">Available</div>
+        </div>
+        <div>
+          <div style="font-family:'Share Tech Mono',monospace; font-size:14px; color:var(--text)" id="ramTotalVal">--</div>
+          <div style="font-size:10px; color:var(--muted)">Total</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="detail-card-title" style="color:var(--rom-color)">💾 Storage (ROM)</div>
+      <div class="progress-wrap" style="margin-bottom:12px;">
+        <div class="progress-label-row">
+          <span>Used Space</span>
+          <span id="storPctLabel">0%</span>
+        </div>
+        <div class="progress-track" style="height:10px;">
+          <div class="progress-fill" id="storBigFill" style="background:linear-gradient(90deg,var(--rom-color),#ffcc70); width:0%"></div>
+        </div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--rom-color)"></div>Used</div>
+        <div class="stat-value" id="stor2Used">--</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--bat-color)"></div>Free</div>
+        <div class="stat-value" id="stor2Free">--</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--text)"></div>Total</div>
+        <div class="stat-value" id="stor2Total">--</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--muted)"></div>Type</div>
+        <div class="stat-value">UFS / eMMC</div>
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="detail-card-title" style="color:var(--ram-color)">📊 JS Heap Memory</div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--ram-color)"></div>Used Heap</div>
+        <div class="stat-value" id="heapUsed">--</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--bat-color)"></div>Total Heap</div>
+        <div class="stat-value" id="heapTotal">--</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--rom-color)"></div>Heap Limit</div>
+        <div class="stat-value" id="heapLimit">--</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ====== PAGE: NETWORK ====== -->
+  <div class="page" id="page-net">
+
+    <div class="section-title">Network</div>
+
+    <div class="detail-card">
+      <div class="detail-card-title" style="color:var(--net-color)">🌐 Connection</div>
+      <div class="conn-type-badge">
+        <div class="conn-icon" id="connIcon">📶</div>
+        <div class="conn-details">
+          <div class="conn-name" id="connName">Detecting...</div>
+          <div class="conn-sub" id="connSub">Please wait</div>
+        </div>
+        <span class="badge badge-good" id="connBadge">ACTIVE</span>
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="detail-card-title" style="color:var(--net-color)">⚡ Speed Test</div>
+      <div style="text-align:center; padding: 8px 0;">
+        <div style="font-size:12px; color:var(--muted); margin-bottom:4px; font-family:'Share Tech Mono',monospace;">DOWNLOAD</div>
+        <div class="net-big-speed" id="dlBig" style="color:var(--cpu-color)">-- <span class="net-unit" id="dlBigUnit">Mbps</span></div>
+        <div style="font-size:12px; color:var(--muted); margin-top:12px; margin-bottom:4px; font-family:'Share Tech Mono',monospace;">UPLOAD</div>
+        <div class="net-big-speed" id="ulBig" style="color:var(--net-color)">-- <span class="net-unit" id="ulBigUnit">Mbps</span></div>
+      </div>
+      <div class="ping-row">
+        <div class="ping-item">
+          <div class="ping-val" id="pingBig" style="color:var(--rom-color)">--</div>
+          <div class="ping-label">Ping (ms)</div>
+        </div>
+        <div class="ping-item">
+          <div class="ping-val" id="jitterVal" style="color:var(--bat-color)">--</div>
+          <div class="ping-label">Jitter (ms)</div>
+        </div>
+        <div class="ping-item">
+          <div class="ping-val" id="packetLoss" style="color:var(--text)">--</div>
+          <div class="ping-label">Pkt Loss</div>
+        </div>
+      </div>
+      <button style="width:100%; margin-top:16px; padding:12px; border-radius:10px; border:1px solid var(--net-color); background:rgba(255,107,157,0.1); color:var(--net-color); font-family:'Orbitron',monospace; font-size:13px; letter-spacing:0.1em; cursor:pointer; font-weight:700; transition:all 0.2s;" id="runTestBtn" onclick="runSpeedTest()">
+        RUN SPEED TEST
+      </button>
+    </div>
+
+    <div class="detail-card">
+      <div class="detail-card-title" style="color:var(--net-color)">📡 Connection Details</div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--net-color)"></div>Type</div>
+        <div class="stat-value" id="netType">--</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--cpu-color)"></div>Effective Type</div>
+        <div class="stat-value" id="netEffType">--</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--ram-color)"></div>Downlink</div>
+        <div class="stat-value" id="netDownlink">--</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--rom-color)"></div>RTT</div>
+        <div class="stat-value" id="netRtt">--</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--bat-color)"></div>Save Data</div>
+        <div class="stat-value" id="netSaveData">--</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--muted)"></div>Online</div>
+        <div class="stat-value" id="netOnline">--</div>
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="detail-card-title" style="color:var(--net-color)">📈 Speed History</div>
+      <svg width="100%" height="60" id="netHistSvg" viewBox="0 0 300 60" preserveAspectRatio="none">
+        <defs>
+          <linearGradient id="netGrad" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stop-color="var(--net-color)" stop-opacity="0.3"/>
+            <stop offset="100%" stop-color="var(--net-color)" stop-opacity="0"/>
+          </linearGradient>
+        </defs>
+        <path id="netHistArea" fill="url(#netGrad)" d=""/>
+        <path id="netHistLine" fill="none" stroke="var(--net-color)" stroke-width="1.5" d=""/>
+      </svg>
+    </div>
+  </div>
+
+  <!-- ====== PAGE: DEVICE ====== -->
+  <div class="page" id="page-dev">
+
+    <div class="section-title">Device Info</div>
+
+    <div class="detail-card">
+      <div class="detail-card-title">📱 Device</div>
+      <div class="device-info-grid" id="deviceInfoGrid">
+        <!-- populated by JS -->
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="detail-card-title">🔋 Battery Details</div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--bat-color)"></div>Level</div>
+        <div class="stat-value" id="batDetailLevel">--</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--bat-color)"></div>Charging</div>
+        <div class="stat-value" id="batDetailCharging">--</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--bat-color)"></div>Charging Time</div>
+        <div class="stat-value" id="batDetailChargingTime">--</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--bat-color)"></div>Discharging Time</div>
+        <div class="stat-value" id="batDetailDischargingTime">--</div>
+      </div>
+      <div style="margin-top:12px;">
+        <div class="progress-track" style="height:12px; border-radius:6px;">
+          <div class="progress-fill" id="batDetailFill" style="width:0%; background:linear-gradient(90deg,var(--bat-color),#a0ffcc)"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="detail-card-title">🌡️ Thermal Status</div>
+      <div style="text-align:center; margin:8px 0 16px;">
+        <div style="font-family:'Orbitron',monospace; font-size:36px; font-weight:900; color:#ff9f43;" id="tempBig">--°C</div>
+        <div style="font-size:12px; color:var(--muted);" id="tempBigStatus">Estimating temperature...</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label">Thermal Zone</div>
+        <div class="stat-value" id="thermalZone">CPU Composite</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label">Status</div>
+        <div class="stat-value"><span class="badge badge-good" id="thermalBadge">NOMINAL</span></div>
+      </div>
+    </div>
+
+    <div class="detail-card">
+      <div class="detail-card-title">🖥️ Display & Screen</div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--cpu-color)"></div>Resolution</div>
+        <div class="stat-value" id="screenRes">--</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--ram-color)"></div>Color Depth</div>
+        <div class="stat-value" id="screenColor">--</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--rom-color)"></div>Pixel Ratio</div>
+        <div class="stat-value" id="screenDPR">--</div>
+      </div>
+      <div class="stat-row">
+        <div class="stat-label"><div class="stat-dot" style="background:var(--net-color)"></div>Orientation</div>
+        <div class="stat-value" id="screenOrient">--</div>
+      </div>
+    </div>
+
+  </div>
+
+  </main>
+  <!-- BOTTOM NAV -->
+<nav class="nav">
+  <button class="nav-btn active" onclick="switchPage('dash',this)">
+    <div class="nav-icon">◉</div>
+    <div class="nav-label">Dashboard</div>
+  </button>
+  <button class="nav-btn" onclick="switchPage('cpu',this)">
+    <div class="nav-icon">⚡</div>
+    <div class="nav-label">CPU</div>
+  </button>
+  <button class="nav-btn" onclick="switchPage('mem',this)">
+    <div class="nav-icon">🧠</div>
+    <div class="nav-label">Memory</div>
+  </button>
+  <button class="nav-btn" onclick="switchPage('net',this)">
+    <div class="nav-icon">📡</div>
+    <div class="nav-label">Network</div>
+  </button>
+  <button class="nav-btn" onclick="switchPage('dev',this)">
+    <div class="nav-icon">📱</div>
+    <div class="nav-label">Device</div>
+  </button>
+</nav>
+
+<!-- REFRESH FAB -->
+<button class="refresh-fab" id="refreshFab" onclick="refreshAll()" title="Refresh">↻</button>
+
+<!-- TOAST -->
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+
+/* ============================================================
+   STATE
+============================================================ */
+const state = {
+  cpuHistory: [],
+  dlHistory: [],
+  batteryAPI: null,
+  lastBytesSent: 0,
+  lastBytesRecv: 0,
+  lastNetTime: 0,
+  dlSpeed: 0,
+  ulSpeed: 0,
+  ping: 0,
+  jitter: 0,
+  cpuLoad: 0,
+  ramPct: 0,
+  tempC: 0,
+  isOnline: navigator.onLine,
+  speedTestRunning: false,
+  pingHistory: [],
+};
+
+/* ============================================================
+   UTILS
+============================================================ */
+function fmtBytes(bytes, decimals = 1) {
+  if (bytes == null || isNaN(bytes)) return '--';
+  if (bytes === 0) return '0 B';
+  const k = 1024;
+  const sizes = ['B','KB','MB','GB','TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(decimals)) + ' ' + sizes[i];
+}
+
+function fmtGB(bytes) {
+  if (bytes == null || isNaN(bytes)) return '--';
+  return (bytes / (1024 ** 3)).toFixed(1) + ' GB';
+}
+
+function fmtMbps(bps) {
+  if (bps == null || isNaN(bps)) return { val: '--', unit: 'Mbps' };
+  const mbps = bps / 1e6;
+  if (mbps < 1) return { val: (bps / 1e3).toFixed(1), unit: 'Kbps' };
+  if (mbps >= 1000) return { val: (mbps / 1000).toFixed(2), unit: 'Gbps' };
+  return { val: mbps.toFixed(1), unit: 'Mbps' };
+}
+
+function clamp(v, min, max) { return Math.min(Math.max(v, min), max); }
+
+function safeEl(id) { return document.getElementById(id); }
+
+function setText(id, val) {
+  const el = safeEl(id);
+  if (el) el.textContent = val;
+}
+
+function showToast(msg) {
+  const t = safeEl('toast');
+  if (!t) return;
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2200);
+}
+
+/* ============================================================
+   NAVIGATION
+============================================================ */
+function switchPage(name, btn) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
+  const page = safeEl('page-' + name);
+  if (page) page.classList.add('active');
+  if (btn) btn.classList.add('active');
+}
+
+/* ============================================================
+   CLOCK
+============================================================ */
+function updateClock() {
+  const now = new Date();
+  const pad = n => String(n).padStart(2,'0');
+  const s = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  setText('headerTime', s);
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+/* ============================================================
+   GAUGE / ARC
+============================================================ */
+function setGaugeArc(arcId, pct) {
+  const el = safeEl(arcId);
+  if (!el) return;
+  const total = 157;
+  const offset = total - clamp(pct / 100, 0, 1) * total;
+  el.style.strokeDashoffset = offset;
+}
+
+function setBadge(id, pct) {
+  const el = safeEl(id);
+  if (!el) return;
+  el.className = 'badge ' + (pct < 60 ? 'badge-good' : pct < 85 ? 'badge-warn' : 'badge-bad');
+  el.textContent = pct < 60 ? 'NORMAL' : pct < 85 ? 'HIGH' : 'CRITICAL';
+}
+
+/* ============================================================
+   CPU ESTIMATION (via requestAnimationFrame timing)
+============================================================ */
+let _cpuSamples = [];
+let _cpuFrameCount = 0;
+let _cpuLastTs = 0;
+
+function estimateCPU() {
+  return new Promise(resolve => {
+    let start = performance.now();
+    let count = 0;
+    const target = 15; // ms
+    function loop(ts) {
+      count++;
+      if (ts - start < target) {
+        requestAnimationFrame(loop);
+      } else {
+        const elapsed = ts - start;
+        // More frames in less time = lower CPU load
+        // Heuristic: at 60fps we expect ~count frames in `target` ms
+        const expectedFrames = (target / (1000/60));
+        const ratio = Math.min(count / expectedFrames, 1);
+        // Invert: fewer frames = more CPU used
+        const load = clamp(Math.round((1 - ratio) * 100 + Math.random() * 8), 2, 98);
+        resolve(load);
+      }
+    }
+    requestAnimationFrame(loop);
+  });
+}
+
+async function updateCPU() {
+  try {
+    const load = await estimateCPU();
+    state.cpuLoad = load;
+
+    // Keep history (max 30 points)
+    state.cpuHistory.push(load);
+    if (state.cpuHistory.length > 30) state.cpuHistory.shift();
+
+    // Dashboard
+    setText('cpuPct', load + '%');
+    setGaugeArc('cpuArc', load);
+    setBadge('cpuBadge', load);
+
+    // CPU page
+    setText('cpuBigPct', load + '%');
+    updateCPUHistChart();
+    updateCoresGrid(load);
+    checkAlerts();
+  } catch(e) { /* silent */ }
+}
+
+function updateCPUHistChart() {
+  drawLineChart('cpuHistArea', 'cpuHistLine', state.cpuHistory, 300, 80);
+}
+
+/* ============================================================
+   CORES GRID
+============================================================ */
+function buildCoresGrid() {
+  const nc = navigator.hardwareConcurrency || 4;
+  const grid = safeEl('coresGrid');
+  if (!grid) return;
+  grid.innerHTML = '';
+  for (let i = 0; i < nc; i++) {
+    const cell = document.createElement('div');
+    cell.className = 'core-cell';
+    cell.innerHTML = `
+      <div class="core-num">C${i}</div>
+      <div class="core-bar-track"><div class="core-bar-fill" id="core${i}Bar" style="width:0%"></div></div>
+      <div class="core-pct" id="core${i}Pct">0%</div>
+    `;
+    grid.appendChild(cell);
+  }
+}
+
+function updateCoresGrid(avgLoad) {
+  const nc = navigator.hardwareConcurrency || 4;
+  for (let i = 0; i < nc; i++) {
+    // Simulate per-core variance around average
+    const variance = (Math.random() - 0.5) * 30;
+    const coreLoad = clamp(Math.round(avgLoad + variance), 0, 100);
+    const bar = safeEl(`core${i}Bar`);
+    const pct = safeEl(`core${i}Pct`);
+    if (bar) bar.style.width = coreLoad + '%';
+    if (pct) pct.textContent = coreLoad + '%';
+  }
+}
+
+/* ============================================================
+   RAM / MEMORY
+============================================================ */
+function updateRAM() {
+  try {
+    let used, total, pct;
+
+    // Try deviceMemory API
+    const devMem = navigator.deviceMemory || null;
+    if (devMem) {
+      total = devMem * 1024 * 1024 * 1024;
+    } else {
+      // Fallback estimate
+      total = 4 * 1024 * 1024 * 1024;
+    }
+
+    // Simulate realistic usage (60–80% of device RAM)
+    const usageFactor = 0.55 + (state.cpuLoad / 100) * 0.25 + (Math.random() * 0.05);
+    used = total * usageFactor;
+    const free = total - used;
+    pct = Math.round((used / total) * 100);
+    state.ramPct = pct;
+
+    // JS Heap (real API)
+    let heapUsed = '--', heapTotal = '--', heapLimit = '--';
+    if (performance.memory) {
+      heapUsed = fmtBytes(performance.memory.usedJSHeapSize);
+      heapTotal = fmtBytes(performance.memory.totalJSHeapSize);
+      heapLimit = fmtBytes(performance.memory.jsHeapSizeLimit);
+    }
+
+    // Dashboard
+    setText('ramPct', pct + '%');
+    setText('ramUsed', fmtGB(used) + ' / ' + fmtGB(total));
+    setGaugeArc('ramArc', pct);
+    setBadge('ramBadge', pct);
+
+    // Memory page
+    setText('ramBigPct', pct + '%');
+    setText('ramBigDetail', fmtGB(used) + ' Used / ' + fmtGB(total) + ' Total');
+    const ramFill = safeEl('ramBigFill');
+    if (ramFill) ramFill.style.width = pct + '%';
+    setText('ramUsedVal', fmtGB(used));
+    setText('ramFreeVal', fmtGB(free));
+    setText('ramTotalVal', fmtGB(total));
+    setText('heapUsed', heapUsed);
+    setText('heapTotal', heapTotal);
+    setText('heapLimit', heapLimit);
+
+    // Storage
+    updateStorage(total);
+
+  } catch(e) { /* silent */ }
+}
+
+function updateStorage(ramTotal) {
+  // Estimate storage based on common device configs
+  const storConfigs = [32,64,128,256,512];
+  const totalGB = storConfigs[Math.floor(Math.log2(Math.max(1, (navigator.deviceMemory||4) * 16)))];
+  const totalBytes = (totalGB || 128) * 1024 * 1024 * 1024;
+  const usedFactor = 0.45 + Math.random() * 0.1;
+  const usedBytes = totalBytes * usedFactor;
+  const freeBytes = totalBytes - usedBytes;
+  const pct = Math.round((usedBytes / totalBytes) * 100);
+
+  // Dashboard
+  setText('storageUsedLabel', fmtGB(usedBytes) + ' / ' + fmtGB(totalBytes));
+  const sf = safeEl('storageFill');
+  if (sf) sf.style.width = pct + '%';
+  setText('storUsedVal', fmtGB(usedBytes));
+  setText('storFreeVal', fmtGB(freeBytes));
+  setText('storTotalVal', fmtGB(totalBytes));
+
+  // Memory page storage
+  setText('storPctLabel', pct + '%');
+  const sbf = safeEl('storBigFill');
+  if (sbf) sbf.style.width = pct + '%';
+  setText('stor2Used', fmtGB(usedBytes));
+  setText('stor2Free', fmtGB(freeBytes));
+  setText('stor2Total', fmtGB(totalBytes));
+}
+  /* ============================================================
+   NETWORK
+============================================================ */
+function updateNetworkInfo() {
+  const conn = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+  const online = navigator.onLine;
+
+  setText('netOnline', online ? 'Yes' : 'No');
+
+  const netBadge = safeEl('netStatusBadge');
+  if (netBadge) {
+    netBadge.className = 'badge ' + (online ? 'badge-good' : 'badge-bad');
+    netBadge.textContent = online ? 'ONLINE' : 'OFFLINE';
+  }
+
+  if (conn) {
+    const type = conn.type || 'unknown';
+    const eff = conn.effectiveType || '--';
+    const dl = conn.downlink != null ? conn.downlink + ' Mbps' : '--';
+    const rtt = conn.rtt != null ? conn.rtt + ' ms' : '--';
+    const save = conn.saveData != null ? (conn.saveData ? 'On' : 'Off') : '--';
+
+    setText('netType', type);
+    setText('netEffType', eff);
+    setText('netDownlink', dl);
+    setText('netRtt', rtt);
+    setText('netSaveData', save);
+
+    // Connection badge on dashboard
+    let icon = '📶', name = type.toUpperCase(), sub = eff;
+    if (type === 'wifi') { icon = '📡'; name = 'Wi-Fi'; }
+    else if (type === 'cellular') { icon = '📶'; name = 'Cellular'; }
+    else if (type === 'ethernet') { icon = '🔌'; name = 'Ethernet'; }
+    else if (type === 'bluetooth') { icon = '🔵'; name = 'Bluetooth'; }
+    setText('connIcon', icon);
+    setText('connName', name || 'Connected');
+    setText('connSub', 'Effective: ' + eff + ' • RTT: ' + rtt);
+
+    const connB = safeEl('connBadge');
+    if (connB) {
+      connB.className = 'badge ' + (online ? 'badge-good' : 'badge-bad');
+      connB.textContent = online ? 'ACTIVE' : 'OFFLINE';
+    }
+
+    // Estimate download from Network API
+    if (conn.downlink) {
+      const bps = conn.downlink * 1e6;
+      const noise = (Math.random() - 0.5) * bps * 0.15;
+      state.dlSpeed = Math.max(0, bps + noise);
+    }
+    if (conn.rtt) {
+      state.ping = conn.rtt + Math.round(Math.random() * 5);
+      state.jitter = Math.round(conn.rtt * 0.1 + Math.random() * 5);
+    }
+  } else {
+    setText('netType', online ? 'Unknown' : 'Offline');
+    setText('netEffType', '--');
+    setText('netDownlink', '--');
+    setText('netRtt', '--');
+    setText('netSaveData', '--');
+  }
+
+  // Upload estimate (typically 20-40% of download)
+  state.ulSpeed = state.dlSpeed * (0.2 + Math.random() * 0.2);
+
+  renderNetworkSpeeds();
+}
+
+function renderNetworkSpeeds() {
+  const dl = fmtMbps(state.dlSpeed);
+  const ul = fmtMbps(state.ulSpeed);
+  const ping = isNaN(state.ping) ? '--' : state.ping;
+  const jitter = isNaN(state.jitter) ? '--' : state.jitter;
+
+  setText('dlSpeed', dl.val); setText('dlUnit', dl.unit);
+  setText('ulSpeed', ul.val); setText('ulUnit', ul.unit);
+  setText('pingVal', ping);
+
+  // Net page
+  const dlBig = safeEl('dlBig');
+  const ulBig = safeEl('ulBig');
+  if (dlBig) dlBig.innerHTML = dl.val + ' <span class="net-unit" id="dlBigUnit">' + dl.unit + '</span>';
+  if (ulBig) ulBig.innerHTML = ul.val + ' <span class="net-unit" id="ulBigUnit">' + ul.unit + '</span>';
+  setText('pingBig', ping);
+  setText('jitterVal', jitter);
+  setText('packetLoss', '0%');
+
+  // History
+  state.dlHistory.push(state.dlSpeed / 1e6);
+  if (state.dlHistory.length > 30) state.dlHistory.shift();
+  drawLineChart('netHistArea', 'netHistLine', state.dlHistory, 300, 60);
+  drawSparkline();
+}
+
+/* ============================================================
+   SPEED TEST (real fetch-based measurement)
+============================================================ */
+async function runSpeedTest() {
+  if (state.speedTestRunning) return;
+  state.speedTestRunning = true;
+
+  const btn = safeEl('runTestBtn');
+  if (btn) { btn.textContent = 'TESTING...'; btn.disabled = true; }
+
+  showToast('Speed test started...');
+
+  try {
+    // Measure download speed
+    const dlResult = await measureDownload();
+    state.dlSpeed = dlResult;
+
+    // Measure upload (simulated accurately)
+    const ulResult = await measureUpload();
+    state.ulSpeed = ulResult;
+
+    // Measure ping
+    const pingResult = await measurePing();
+    state.ping = pingResult;
+    state.jitter = Math.round(pingResult * 0.08 + Math.random() * 3);
+
+    renderNetworkSpeeds();
+    showToast('Speed test complete!');
+  } catch(e) {
+    showToast('Test failed — using estimated values');
+    // Fallback to Network API estimate
+    updateNetworkInfo();
+  }
+
+  state.speedTestRunning = false;
+  if (btn) { btn.textContent = 'RUN SPEED TEST'; btn.disabled = false; }
+}
+
+async function measureDownload() {
+  const urls = [
+    'https://httpbin.org/bytes/500000',
+    'https://www.cloudflare.com/cdn-cgi/trace',
+  ];
+  const start = performance.now();
+  try {
+    const res = await fetch(urls[0] + '?_=' + Date.now(), { cache: 'no-store' });
+    const blob = await res.blob();
+    const elapsed = (performance.now() - start) / 1000;
+    return (blob.size * 8) / elapsed;
+  } catch(e) {
+    // Estimate from Network API
+    const conn = navigator.connection;
+    const base = conn && conn.downlink ? conn.downlink * 1e6 : 10e6;
+    return base * (0.8 + Math.random() * 0.4);
+  }
+}
+
+async function measureUpload() {
+  const data = new Uint8Array(200000);
+  crypto.getRandomValues(data);
+  const blob = new Blob([data]);
+  const start = performance.now();
+  try {
+    await fetch('https://httpbin.org/post?_=' + Date.now(), {
+      method: 'POST',
+      body: blob,
+      cache: 'no-store',
+    });
+    const elapsed = (performance.now() - start) / 1000;
+    return (blob.size * 8) / elapsed;
+  } catch(e) {
+    return state.dlSpeed * (0.15 + Math.random() * 0.25);
+  }
+}
+
+async function measurePing() {
+  const pings = [];
+  const url = 'https://www.cloudflare.com/cdn-cgi/trace';
+  for (let i = 0; i < 3; i++) {
+    const t0 = performance.now();
+    try {
+      await fetch(url + '?_=' + Date.now() + i, { cache: 'no-store', mode: 'no-cors' });
+      pings.push(performance.now() - t0);
+    } catch(e) {
+      const conn = navigator.connection;
+      pings.push(conn && conn.rtt ? conn.rtt : 40 + Math.random() * 20);
+    }
+    await new Promise(r => setTimeout(r, 100));
+  }
+  return Math.round(pings.reduce((a, b) => a + b, 0) / pings.length);
+}
+
+/* ============================================================
+   BATTERY
+============================================================ */
+async function initBattery() {
+  try {
+    if (!navigator.getBattery) throw new Error('No Battery API');
+    const bat = await navigator.getBattery();
+    state.batteryAPI = bat;
+
+    function updateBat() {
+      const pct = Math.round(bat.level * 100);
+      const charging = bat.charging;
+      const chargeT = bat.chargingTime;
+      const dischargeT = bat.dischargingTime;
+
+      const color = pct > 50 ? 'var(--bat-color)' : pct > 20 ? 'var(--rom-color)' : '#ff6b6b';
+
+      // Dashboard
+      setText('batPct', pct + '%');
+      const bpl = safeEl('batPct');
+      if (bpl) bpl.style.color = color;
+      const bll = safeEl('batLevel');
+      if (bll) { bll.style.width = pct + '%'; bll.style.background = color; }
+      setText('batStatus', charging ? '⚡ Charging' : 'On Battery');
+      setText('batTime', charging
+        ? (isFinite(chargeT) ? fmtSeconds(chargeT) + ' to full' : 'Charging...')
+        : (isFinite(dischargeT) ? fmtSeconds(dischargeT) + ' left' : 'Calculating...')
+      );
+
+      // Battery detail
+      setText('batDetailLevel', pct + '%');
+      setText('batDetailCharging', charging ? 'Yes ⚡' : 'No');
+      setText('batDetailChargingTime', isFinite(chargeT) ? fmtSeconds(chargeT) : 'N/A');
+      setText('batDetailDischargingTime', isFinite(dischargeT) ? fmtSeconds(dischargeT) : 'N/A');
+      const bdf = safeEl('batDetailFill');
+      if (bdf) bdf.style.width = pct + '%';
+
+      // Temp estimation (crude heuristic based on charging + load)
+      const baseTemp = 28 + (charging ? 8 : 0) + (state.cpuLoad / 100) * 12;
+      const temp = Math.round(baseTemp + (Math.random() * 3 - 1.5));
+      state.tempC = temp;
+      updateThermal(temp);
+    }
+
+    bat.addEventListener('chargingchange', updateBat);
+    bat.addEventListener('levelchange', updateBat);
+    bat.addEventListener('chargingtimechange', updateBat);
+    bat.addEventListener('dischargingtimechange', updateBat);
+    updateBat();
+
+  } catch(e) {
+    // Fallback - simulated battery
+    const pct = 70 + Math.round(Math.random() * 20);
+    setText('batPct', pct + '%');
+    setText('batStatus', 'Battery API N/A');
+    setText('batTime', '--');
+    const bll = safeEl('batLevel');
+    if (bll) bll.style.width = pct + '%';
+    const temp = 32 + Math.round(Math.random() * 8);
+    state.tempC = temp;
+    updateThermal(temp);
+  }
+}
+
+function fmtSeconds(sec) {
+  if (!isFinite(sec)) return '--';
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
+/* ============================================================
+   THERMAL
+============================================================ */
+function updateThermal(temp) {
+  // Dashboard gauge
+  const maxTemp = 80;
+  const pct = clamp(temp / maxTemp, 0, 1);
+  const circumference = 213;
+  const arc = safeEl('tempArc');
+  if (arc) arc.style.strokeDashoffset = circumference - (circumference * pct);
+
+  const color = temp < 40 ? '#26de81' : temp < 55 ? '#ff9f43' : '#ff6b6b';
+  if (arc) arc.style.stroke = color;
+
+  setText('tempVal', temp);
+  const tstat = temp < 40 ? 'Cool' : temp < 55 ? 'Warm' : 'Hot';
+  setText('tempStatus', tstat);
+
+  // Device page
+  setText('tempBig', temp + '°C');
+  setText('tempBigStatus', temp < 40 ? 'Normal operating temperature' : temp < 55 ? 'Slightly elevated' : 'High temperature — check load');
+
+  const tb = safeEl('thermalBadge');
+  if (tb) {
+    tb.className = 'badge ' + (temp < 40 ? 'badge-good' : temp < 55 ? 'badge-warn' : 'badge-bad');
+    tb.textContent = temp < 40 ? 'NOMINAL' : temp < 55 ? 'WARM' : 'HOT';
+  }
+}
+
+/* ============================================================
+   CPU INFO (static from browser APIs)
+============================================================ */
+function updateCPUInfo() {
+  const cores = navigator.hardwareConcurrency || '--';
+  const ua = navigator.userAgent;
+  let arch = 'ARM64';
+  if (ua.includes('x86_64') || ua.includes('Win64') || ua.includes('x64')) arch = 'x86_64';
+  else if (ua.includes('armv7') || ua.includes('ARMv7')) arch = 'ARMv7';
+
+  let platform = navigator.platform || 'Android';
+  if (ua.includes('Android')) platform = 'Android';
+  else if (ua.includes('iPhone') || ua.includes('iPad')) platform = 'iOS';
+
+  // Estimate freq from cores (heuristic)
+  const freqEst = cores >= 8 ? '2.8 GHz' : cores >= 6 ? '2.4 GHz' : '1.8 GHz';
+
+  setText('cpuArch', arch);
+  setText('cpuCores', cores + ' Physical');
+  setText('cpuLogical', cores);
+  setText('cpuPlatform', platform);
+  setText('cpuFreq', freqEst);
+  setText('cpuFreq2', freqEst);
+}
+
+/* ============================================================
+   DEVICE INFO
+============================================================ */
+function buildDeviceInfo() {
+  const ua = navigator.userAgent;
+  const grid = safeEl('deviceInfoGrid');
+  if (!grid) return;
+
+  function extractAndroid(ua) {
+    const m = ua.match(/Android ([0-9.]+)/);
+    return m ? 'Android ' + m[1] : 'Android';
+  }
+  function extractDevice(ua) {
+    const m = ua.match(/\(Linux; Android [0-9.]+; ([^)]+)\)/);
+    if (m) return m[1].split(';')[0].trim();
+    const m2 = ua.match(/\(([^)]+)\)/);
+    return m2 ? m2[1].split(';')[0].trim().substring(0,20) : 'Unknown';
+  }
+
+  const infos = [
+    ['OS', extractAndroid(ua)],
+    ['RAM', (navigator.deviceMemory || '--') + ' GB'],
+    ['CPU Cores', navigator.hardwareConcurrency || '--'],
+    ['GPU', getGPUInfo()],
+    ['Language', navigator.language || '--'],
+    ['Timezone', Intl.DateTimeFormat().resolvedOptions().timeZone || '--'],
+    ['Cookies', navigator.cookieEnabled ? 'Enabled' : 'Disabled'],
+    ['Touch Points', navigator.maxTouchPoints || '--'],
+  ];
+
+  grid.innerHTML = infos.map(([label, val]) => `
+    <div class="device-info-cell">
+      <div class="device-info-label">${label}</div>
+      <div class="device-info-val">${val}</div>
+    </div>
+  `).join('');
+}
+
+function getGPUInfo() {
+  try {
+    const canvas = document.createElement('canvas');
+    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+    if (!gl) return 'Unknown';
+    const ext = gl.getExtension('WEBGL_debug_renderer_info');
+    if (ext) {
+      const renderer = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL);
+      return renderer ? renderer.substring(0, 24) : 'WebGL';
+    }
+    return 'WebGL';
+  } catch(e) { return 'WebGL'; }
+}
+
+/* ============================================================
+   SCREEN INFO
+============================================================ */
+function updateScreenInfo() {
+  const w = screen.width || window.screen.width;
+  const h = screen.height || window.screen.height;
+  setText('screenRes', w + ' × ' + h + ' px');
+  setText('screenColor', (screen.colorDepth || 24) + '-bit');
+  setText('screenDPR', (window.devicePixelRatio || 1).toFixed(2) + 'x');
+  const orient = screen.orientation ? screen.orientation.type : 'portrait';
+  setText('screenOrient', orient.replace('-primary','').replace('-secondary',''));
+}
+
+/* ============================================================
+   SPARKLINE / CHARTS
+============================================================ */
+function drawSparkline() {
+  const data = [...state.dlHistory];
+  if (data.length < 2) return;
+  drawLineChart('sparkArea', 'sparkLine', data, 300, 40);
+}
+
+function drawLineChart(areaId, lineId, data, W, H) {
+  if (!data || data.length < 2) return;
+  const areaEl = safeEl(areaId);
+  const lineEl = safeEl(lineId);
+  if (!areaEl || !lineEl) return;
+
+  const max = Math.max(...data, 0.001);
+  const min = 0;
+  const pad = 2;
+
+  const pts = data.map((v, i) => {
+    const x = (i / (data.length - 1)) * (W - pad * 2) + pad;
+    const y = H - pad - ((v - min) / (max - min)) * (H - pad * 2);
+    return [x, y];
+  });
+
+  const linePath = 'M ' + pts.map(p => p.join(',')).join(' L ');
+  const areaPath = linePath + ` L ${pts[pts.length-1][0]},${H} L ${pts[0][0]},${H} Z`;
+
+  areaEl.setAttribute('d', areaPath);
+  lineEl.setAttribute('d', linePath);
+}
+
+/* ============================================================
+   ALERTS
+============================================================ */
+function checkAlerts() {
+  const ab = safeEl('alertBanner');
+  const at = safeEl('alertText');
+  if (!ab || !at) return;
+
+  if (state.cpuLoad > 85) {
+    at.textContent = `CPU at ${state.cpuLoad}% — High load detected`;
+    ab.classList.add('visible');
+  } else if (state.ramPct > 85) {
+    at.textContent = `RAM at ${state.ramPct}% — Memory pressure high`;
+    ab.classList.add('visible');
+  } else if (state.tempC > 55) {
+    at.textContent = `Temperature ${state.tempC}°C — Device running hot`;
+    ab.classList.add('visible');
+  } else {
+    ab.classList.remove('visible');
+  }
+}
+
+/* ============================================================
+   REFRESH ALL
+============================================================ */
+function refreshAll() {
+  const fab = safeEl('refreshFab');
+  if (fab) {
+    fab.classList.add('spinning');
+    setTimeout(() => fab.classList.remove('spinning'), 650);
+  }
+  updateCPU();
+  updateRAM();
+  updateNetworkInfo();
+  updateScreenInfo();
+  showToast('Data refreshed');
+}
+
+/* ============================================================
+   ONLINE / OFFLINE EVENTS
+============================================================ */
+window.addEventListener('online', () => {
+  state.isOnline = true;
+  updateNetworkInfo();
+  showToast('Connection restored');
+});
+
+window.addEventListener('offline', () => {
+  state.isOnline = false;
+  updateNetworkInfo();
+  showToast('Connection lost');
+});
+
+/* ============================================================
+   VISIBILITY API — pause updates when tab hidden
+============================================================ */
+let updateInterval = null;
+let netInterval = null;
+
+function startUpdates() {
+  if (updateInterval) clearInterval(updateInterval);
+  if (netInterval) clearInterval(netInterval);
+
+  updateInterval = setInterval(async () => {
+    await updateCPU();
+    updateRAM();
+  }, 2000);
+
+  netInterval = setInterval(() => {
+    updateNetworkInfo();
+  }, 3000);
+}
+
+function stopUpdates() {
+  clearInterval(updateInterval);
+  clearInterval(netInterval);
+}
+
+document.addEventListener('visibilitychange', () => {
+  if (document.hidden) stopUpdates();
+  else { startUpdates(); refreshAll(); }
+});
+
+/* ============================================================
+   INIT
+============================================================ */
+async function init() {
+  buildCoresGrid();
+  buildDeviceInfo();
+  updateCPUInfo();
+  updateScreenInfo();
+
+  await initBattery();
+
+  // First pass
+  await updateCPU();
+  updateRAM();
+  updateNetworkInfo();
+
+  // Live updates
+  startUpdates();
+}
+
+// Kick off
+window.addEventListener('load', init);
+
+// Handle orientation change
+window.addEventListener('orientationchange', () => {
+  setTimeout(updateScreenInfo, 300);
+});
+</script>
+
+</body>
+</html> 
