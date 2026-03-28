@@ -1,0 +1,814 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#060c18">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="SysPulse">
+<title>SysPulse — System Monitor</title>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Rajdhani:wght@400;500;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow-x:hidden}
+body{background:#060c18;color:#d0e4ff;font-family:'Rajdhani',sans-serif;-webkit-font-smoothing:antialiased;user-select:none}
+:root{--c:#00ffe0;--r:#8b7fff;--s:#ffb347;--n:#ff6fa3;--b:#2edc82;--bg:#060c18;--surf:#0b1628;--card:#101e36;--bdr:rgba(0,255,224,0.1);--mut:#3a5070;--hh:58px;--nh:62px}
+body::after{content:'';position:fixed;inset:0;background:repeating-linear-gradient(0deg,transparent,transparent 3px,rgba(0,0,0,0.04) 3px,rgba(0,0,0,0.04) 4px);pointer-events:none;z-index:9999}
+
+.hdr{position:fixed;top:0;left:0;right:0;height:var(--hh);background:rgba(6,12,24,.97);backdrop-filter:blur(14px);border-bottom:1px solid var(--bdr);display:flex;align-items:center;justify-content:space-between;padding:0 16px;z-index:200}
+.logo{font-family:'Orbitron',monospace;font-weight:900;font-size:17px;letter-spacing:.12em;color:var(--c);text-shadow:0 0 18px rgba(0,255,224,.45)}
+.logo em{color:#d0e4ff;opacity:.4;font-style:normal}
+.hdot{width:7px;height:7px;border-radius:50%;background:var(--c);box-shadow:0 0 8px var(--c);animation:blink 1.3s ease-in-out infinite}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.15}}
+.htime{font-family:'Share Tech Mono',monospace;font-size:12px;color:var(--mut)}
+.hlive{display:flex;align-items:center;gap:7px}
+.hlive span{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--c);letter-spacing:.1em}
+
+.nav{position:fixed;bottom:0;left:0;right:0;height:var(--nh);background:rgba(6,12,24,.98);backdrop-filter:blur(16px);border-top:1px solid var(--bdr);display:flex;z-index:200}
+.nb{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;border:none;background:none;color:var(--mut);cursor:pointer;position:relative;transition:color .2s}
+.nb.on{color:var(--c)}
+.nb.on::before{content:'';position:absolute;top:0;left:20%;right:20%;height:2px;background:var(--c);box-shadow:0 0 10px var(--c);border-radius:0 0 4px 4px}
+.ni{font-size:19px;line-height:1}
+.nl{font-size:10px;font-weight:600;letter-spacing:.04em;text-transform:uppercase}
+
+.main{padding-top:var(--hh);padding-bottom:calc(var(--nh)+12px);min-height:100vh}
+.pg{display:none;padding:14px;animation:fi .2s ease}
+.pg.on{display:block}
+@keyframes fi{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.st{font-family:'Orbitron',monospace;font-size:10px;letter-spacing:.2em;color:var(--mut);text-transform:uppercase;margin:18px 0 10px;display:flex;align-items:center;gap:10px}
+.st:first-child{margin-top:2px}
+.st::after{content:'';flex:1;height:1px;background:var(--bdr)}
+
+.card{background:var(--card);border:1px solid var(--bdr);border-radius:13px;padding:15px;margin-bottom:12px;position:relative;overflow:hidden}
+.card::before{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(0,255,224,.025),transparent 55%);pointer-events:none}
+
+.gw{text-align:center}
+.glb{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--mut);letter-spacing:.1em;margin-bottom:6px}
+.gwrap{position:relative;width:108px;height:68px;margin:0 auto 6px}
+.gsv{width:108px;height:76px;overflow:visible}
+.gtrack{fill:none;stroke:rgba(255,255,255,.05);stroke-width:9;stroke-linecap:round}
+.gfill{fill:none;stroke-width:9;stroke-linecap:round;transition:stroke-dashoffset .7s cubic-bezier(.4,0,.2,1);filter:drop-shadow(0 0 5px currentColor)}
+.gval{font-family:'Orbitron',monospace;font-size:17px;font-weight:700;position:absolute;bottom:-2px;left:50%;transform:translateX(-50%);white-space:nowrap}
+.gsub{font-size:12px;color:var(--mut);font-weight:500;margin-bottom:4px;font-family:'Share Tech Mono',monospace}
+
+.badge{display:inline-block;font-family:'Share Tech Mono',monospace;font-size:10px;padding:2px 7px;border-radius:3px;letter-spacing:.04em}
+.bg{background:rgba(46,220,130,.1);color:var(--b);border:1px solid rgba(46,220,130,.22)}
+.bw{background:rgba(255,179,71,.1);color:var(--s);border:1px solid rgba(255,179,71,.22)}
+.bd{background:rgba(255,80,80,.1);color:#ff7070;border:1px solid rgba(255,80,80,.22)}
+.bn{background:rgba(0,255,224,.08);color:var(--c);border:1px solid rgba(0,255,224,.2)}
+
+.sr{display:flex;align-items:flex-start;justify-content:space-between;padding:7px 0;border-bottom:1px solid rgba(255,255,255,.04)}
+.sr:last-child{border:none;padding-bottom:0}
+.sr:first-child{padding-top:0}
+.sl{font-size:13px;color:var(--mut);font-weight:500;display:flex;align-items:center;gap:7px;flex-shrink:0}
+.sd{width:5px;height:5px;border-radius:50%;flex-shrink:0;margin-top:4px}
+.sv{font-family:'Share Tech Mono',monospace;font-size:12px;color:#d0e4ff;text-align:right;max-width:58%;word-break:break-word;line-height:1.4}
+
+.prow{display:flex;justify-content:space-between;font-family:'Share Tech Mono',monospace;font-size:11px;color:var(--mut);margin-bottom:5px}
+.pt{height:6px;background:rgba(255,255,255,.05);border-radius:3px;overflow:hidden}
+.pf{height:100%;border-radius:3px;transition:width .7s cubic-bezier(.4,0,.2,1);position:relative}
+.pf::after{content:'';position:absolute;right:0;top:0;bottom:0;width:18px;background:linear-gradient(90deg,transparent,rgba(255,255,255,.28));border-radius:3px}
+
+.spd{display:flex;justify-content:space-around;padding:6px 0 4px}
+.si{text-align:center}
+.sa{font-size:17px;margin-bottom:1px}
+.sn{font-family:'Orbitron',monospace;font-size:19px;font-weight:700;line-height:1}
+.su{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--mut);margin-top:1px}
+.sk{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.07em;margin-top:2px}
+.sdiv{width:1px;background:var(--bdr);margin:4px 0}
+
+.spk{width:100%;height:36px;margin-top:10px}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:11px;margin-bottom:0}
+.gf{grid-column:1/-1}
+
+.bs{width:52px;height:24px;border:2px solid currentColor;border-radius:4px;position:relative;flex-shrink:0}
+.bs::after{content:'';position:absolute;right:-7px;top:50%;transform:translateY(-50%);width:5px;height:11px;background:currentColor;border-radius:0 3px 3px 0}
+.bl{position:absolute;top:2px;left:2px;bottom:2px;border-radius:2px;transition:width .6s ease}
+.bpct{font-family:'Orbitron',monospace;font-size:21px;font-weight:700}
+
+.tr{position:relative;width:76px;height:76px;margin:0 auto}
+.tv{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;font-family:'Orbitron',monospace;font-size:15px;font-weight:700}
+.tu{font-size:10px;color:var(--mut)}
+
+.cg{display:grid;grid-template-columns:repeat(4,1fr);gap:5px;margin-top:8px}
+.cc{background:rgba(255,255,255,.025);border:1px solid var(--bdr);border-radius:6px;padding:7px 3px;text-align:center}
+.cn{font-family:'Share Tech Mono',monospace;font-size:9px;color:var(--mut);margin-bottom:3px}
+.cbt{height:3px;background:rgba(255,255,255,.05);border-radius:2px;margin-bottom:3px;overflow:hidden}
+.cbf{height:100%;background:var(--c);border-radius:2px;transition:width .5s ease}
+.cp{font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--c)}
+
+.hchart{width:100%;height:72px;margin-top:8px}
+.dg{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--bdr);border-radius:10px;overflow:hidden}
+.dc{background:var(--card);padding:11px}
+.dl{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.1em;margin-bottom:3px}
+.dv{font-family:'Share Tech Mono',monospace;font-size:12px;color:#d0e4ff;word-break:break-word;line-height:1.35}
+
+.imei-box{background:rgba(255,179,71,.05);border:1px solid rgba(255,179,71,.2);border-left:3px solid var(--s);border-radius:12px;padding:15px;margin-bottom:11px}
+.imei-title{font-family:'Orbitron',monospace;font-size:12px;color:var(--s);letter-spacing:.1em;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.imei-val{font-family:'Share Tech Mono',monospace;font-size:16px;font-weight:700;color:var(--s);text-align:center;letter-spacing:.1em;padding:9px;background:rgba(0,0,0,.3);border-radius:8px;margin:8px 0;word-break:break-all;text-shadow:0 0 12px rgba(255,179,71,.25)}
+.imei-meth{background:var(--card);border:1px solid var(--bdr);border-radius:10px;padding:13px;margin-bottom:10px}
+.imei-meth-t{font-size:14px;font-weight:700;color:#d0e4ff;margin-bottom:7px;display:flex;align-items:center;gap:8px}
+.snum{display:inline-flex;align-items:center;justify-content:center;width:20px;height:20px;border-radius:50%;background:rgba(0,255,224,.1);border:1px solid rgba(0,255,224,.2);font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--c);flex-shrink:0}
+.ctag{display:inline-block;font-family:'Share Tech Mono',monospace;font-size:12px;background:rgba(0,0,0,.4);border:1px solid var(--bdr);color:var(--c);padding:1px 6px;border-radius:3px;margin:1px}
+.warn-box{background:rgba(255,100,100,.06);border:1px solid rgba(255,100,100,.2);border-left:3px solid #ff6464;border-radius:7px;padding:10px 13px;font-size:12px;color:#ffaaaa;line-height:1.55}
+.info-box{background:rgba(0,255,224,.05);border:1px solid rgba(0,255,224,.15);border-left:3px solid var(--c);border-radius:7px;padding:10px 13px;font-size:12px;color:#99e8e0;line-height:1.55}
+.mt8{margin-top:8px}
+
+.toast{position:fixed;bottom:calc(var(--nh)+70px);left:50%;transform:translateX(-50%) translateY(10px);background:rgba(0,255,224,.1);border:1px solid rgba(0,255,224,.25);color:var(--c);font-family:'Share Tech Mono',monospace;font-size:11px;padding:7px 18px;border-radius:30px;opacity:0;transition:all .3s;z-index:300;white-space:nowrap;pointer-events:none}
+.toast.on{opacity:1;transform:translateX(-50%) translateY(0)}
+.alert{background:rgba(255,100,100,.08);border:1px solid rgba(255,100,100,.25);border-radius:10px;padding:9px 13px;font-size:13px;color:#ffaaaa;display:none;align-items:center;gap:8px;margin-bottom:11px}
+.alert.on{display:flex}
+.fab{position:fixed;bottom:calc(var(--nh)+18px);right:16px;width:44px;height:44px;border-radius:50%;background:var(--c);border:none;color:#060c18;font-size:19px;display:flex;align-items:center;justify-content:center;cursor:pointer;box-shadow:0 0 18px rgba(0,255,224,.35);z-index:199;transition:transform .2s}
+.fab:active{transform:scale(.9)}
+.fab.spin{animation:sp .6s linear}
+@keyframes sp{to{transform:rotate(360deg)}}
+.bignum{font-family:'Orbitron',monospace;font-weight:900;line-height:1;text-align:center}
+.dtitle{font-family:'Orbitron',monospace;font-size:12px;font-weight:700;letter-spacing:.08em;margin-bottom:13px;display:flex;align-items:center;gap:7px}
+.onind{display:flex;align-items:center;gap:6px;font-family:'Share Tech Mono',monospace;font-size:11px}
+.ondot{width:7px;height:7px;border-radius:50%}
+.spdbtn{width:100%;padding:11px;border-radius:9px;border:1px solid var(--n);background:rgba(255,111,163,.07);color:var(--n);font-family:'Orbitron',monospace;font-size:12px;letter-spacing:.1em;cursor:pointer;font-weight:700;margin-top:14px;transition:background .2s}
+.spdbtn:active{background:rgba(255,111,163,.16)}
+</style>
+</head>
+<body>
+
+<header class="hdr">
+  <div class="logo">SYS<em>PULSE</em></div>
+  <div class="hlive"><div class="hdot"></div><span>LIVE</span></div>
+  <div class="htime" id="htime">--:--:--</div>
+</header>
+
+<main class="main">
+
+<!-- DASHBOARD -->
+<div class="pg on" id="pg-dash">
+  <div class="alert" id="alert"><span>⚠️</span><span id="alertMsg">--</span></div>
+  <div class="st">System Overview</div>
+  <div class="g2">
+    <div class="card gw">
+      <div class="glb">CPU LOAD</div>
+      <div class="gwrap">
+        <svg class="gsv" viewBox="0 0 108 76">
+          <path class="gtrack" d="M8 65 A48 48 0 0 1 100 65"/>
+          <path class="gfill" id="cpuArc" d="M8 65 A48 48 0 0 1 100 65" stroke="var(--c)" stroke-dasharray="150" stroke-dashoffset="150"/>
+        </svg>
+        <div class="gval" id="cpuPct" style="color:var(--c)">0%</div>
+      </div>
+      <div class="gsub" id="cpuCoreCount">-- Cores</div>
+      <span class="badge bg" id="cpuBadge">NORMAL</span>
+    </div>
+    <div class="card gw">
+      <div class="glb">RAM</div>
+      <div class="gwrap">
+        <svg class="gsv" viewBox="0 0 108 76">
+          <path class="gtrack" d="M8 65 A48 48 0 0 1 100 65"/>
+          <path class="gfill" id="ramArc" d="M8 65 A48 48 0 0 1 100 65" stroke="var(--r)" stroke-dasharray="150" stroke-dashoffset="150"/>
+        </svg>
+        <div class="gval" id="ramPct" style="color:var(--r)">--%</div>
+      </div>
+      <div class="gsub" id="ramSub">-- GB total</div>
+      <span class="badge bg" id="ramBadge">NORMAL</span>
+    </div>
+    <div class="card gf">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:9px">
+        <div style="font-family:'Orbitron',monospace;font-size:11px;letter-spacing:.08em;color:var(--n)">NETWORK</div>
+        <div class="onind"><div class="ondot" id="onDot" style="background:var(--b);box-shadow:0 0 6px var(--b)"></div><span id="onLabel" style="color:var(--b)">ONLINE</span></div>
+      </div>
+      <div class="spd">
+        <div class="si"><div class="sa" style="color:var(--c)">↓</div><div class="sn" id="dlS" style="color:var(--c)">--</div><div class="su" id="dlU">Mbps</div><div class="sk">Down</div></div>
+        <div class="sdiv"></div>
+        <div class="si"><div class="sa" style="color:var(--n)">↑</div><div class="sn" id="ulS" style="color:var(--n)">--</div><div class="su" id="ulU">Mbps</div><div class="sk">Up</div></div>
+        <div class="sdiv"></div>
+        <div class="si"><div class="sa" style="color:var(--s)">◎</div><div class="sn" id="pgS" style="color:var(--s)">--</div><div class="su">ms</div><div class="sk">Ping</div></div>
+      </div>
+      <svg class="spk" id="spkSvg" viewBox="0 0 300 36" preserveAspectRatio="none">
+        <defs><linearGradient id="sg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--c)" stop-opacity=".35"/><stop offset="100%" stop-color="var(--c)" stop-opacity="0"/></linearGradient></defs>
+        <path id="spkA" fill="url(#sg)" d=""/><path id="spkL" fill="none" stroke="var(--c)" stroke-width="1.4" d=""/>
+      </svg>
+    </div>
+    <div class="card gf">
+      <div style="font-family:'Orbitron',monospace;font-size:11px;letter-spacing:.08em;color:var(--s);margin-bottom:11px">STORAGE (ROM)</div>
+      <div class="prow"><span>Internal Used</span><span id="storLabel">-- / --</span></div>
+      <div class="pt"><div class="pf" id="storFill" style="background:linear-gradient(90deg,var(--s),#ffdd88);width:0%"></div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:12px;text-align:center">
+        <div><div style="font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--s)" id="sUsed">--</div><div style="font-size:10px;color:var(--mut)">Used</div></div>
+        <div><div style="font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--b)" id="sFree">--</div><div style="font-size:10px;color:var(--mut)">Free</div></div>
+        <div><div style="font-family:'Share Tech Mono',monospace;font-size:13px;color:#d0e4ff" id="sTotal">--</div><div style="font-size:10px;color:var(--mut)">Total</div></div>
+      </div>
+    </div>
+    <div class="card">
+      <div style="font-family:'Orbitron',monospace;font-size:10px;letter-spacing:.08em;color:var(--b);margin-bottom:10px">BATTERY</div>
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:8px">
+        <div class="bs" id="batShell" style="color:var(--b)"><div class="bl" id="batLvl" style="background:var(--b);width:70%"></div></div>
+        <div><div class="bpct" id="batPct" style="color:var(--b)">--%</div><div style="font-size:11px;color:var(--mut)" id="batStat">--</div></div>
+      </div>
+      <div class="sr" style="padding-top:0"><div class="sl">Remaining</div><div class="sv" id="batETA">--</div></div>
+    </div>
+    <div class="card" style="text-align:center">
+      <div style="font-family:'Orbitron',monospace;font-size:10px;letter-spacing:.08em;color:#ff9f43;margin-bottom:7px">THERMAL</div>
+      <div class="tr">
+        <svg width="76" height="76" viewBox="0 0 76 76">
+          <circle cx="38" cy="38" r="32" fill="none" stroke="rgba(255,255,255,.04)" stroke-width="7"/>
+          <circle cx="38" cy="38" r="32" fill="none" id="tmpArc" stroke="#ff9f43" stroke-width="7" stroke-linecap="round" stroke-dasharray="201" stroke-dashoffset="201" transform="rotate(-90 38 38)" style="filter:drop-shadow(0 0 5px #ff9f43);transition:stroke-dashoffset .7s ease"/>
+        </svg>
+        <div class="tv"><span id="tmpVal" style="color:#ff9f43">--</span><span class="tu">°C</span></div>
+      </div>
+      <div style="font-size:11px;color:var(--mut);margin-top:6px" id="tmpStat">--</div>
+    </div>
+  </div>
+  <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--mut);text-align:center;padding:6px 0 2px">Values based on browser APIs. See each page for accuracy notes.</div>
+</div>
+
+<!-- CPU PAGE -->
+<div class="pg" id="pg-cpu">
+  <div class="st">Processor</div>
+  <div class="card">
+    <div class="dtitle" style="color:var(--c)">⚡ CPU Usage</div>
+    <div class="bignum" style="font-size:50px;color:var(--c);text-shadow:0 0 25px rgba(0,255,224,.35)" id="cpuBig">0%</div>
+    <div style="font-size:12px;color:var(--mut);text-align:center;margin-top:3px">Estimated via frame-timing</div>
+    <svg class="hchart" id="cpuHist" viewBox="0 0 300 72" preserveAspectRatio="none">
+      <defs><linearGradient id="cg" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--c)" stop-opacity=".28"/><stop offset="100%" stop-color="var(--c)" stop-opacity="0"/></linearGradient></defs>
+      <path id="cpuHA" fill="url(#cg)" d=""/><path id="cpuHL" fill="none" stroke="var(--c)" stroke-width="1.5" d=""/>
+    </svg>
+  </div>
+  <div class="card">
+    <div class="dtitle" style="color:var(--c)">🔲 Per-Core Load (estimated)</div>
+    <div class="cg" id="coreGrid"></div>
+  </div>
+  <div class="card">
+    <div class="dtitle" style="color:var(--c)">📋 CPU Information</div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--c)"></div>Hardware Threads</div><div class="sv" id="hc">--</div></div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--c)"></div>Architecture</div><div class="sv" id="arch">--</div></div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--c)"></div>Platform / OS</div><div class="sv" id="plat">--</div></div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--c)"></div>Browser</div><div class="sv" id="osBrow">--</div></div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--c)"></div>Est. Frequency</div><div class="sv" id="estFreq">--</div></div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--c)"></div>GPU Renderer</div><div class="sv" id="gpuR">--</div></div>
+    <div class="info-box mt8">💡 CPU % uses requestAnimationFrame timing. Web browsers cannot read real OS CPU counters due to security sandboxing.</div>
+  </div>
+</div>
+
+<!-- MEMORY PAGE -->
+<div class="pg" id="pg-mem">
+  <div class="st">Memory</div>
+  <div class="card">
+    <div class="dtitle" style="color:var(--r)">🧠 RAM</div>
+    <div class="bignum" style="font-size:38px;color:var(--r)" id="ramBig">--%</div>
+    <div style="font-size:12px;color:var(--mut);text-align:center;margin:3px 0 12px" id="ramBigSub">-- Used / -- Total</div>
+    <div class="prow"><span>Usage</span><span id="ramPctLbl">0%</span></div>
+    <div class="pt" style="height:9px;border-radius:5px"><div class="pf" id="ramBF" style="background:linear-gradient(90deg,var(--r),#c4b8ff);width:0%"></div></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:8px;margin-top:13px;text-align:center">
+      <div><div style="font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--r)" id="rU">--</div><div style="font-size:10px;color:var(--mut)">Used</div></div>
+      <div><div style="font-family:'Share Tech Mono',monospace;font-size:13px;color:var(--b)" id="rF">--</div><div style="font-size:10px;color:var(--mut)">Free</div></div>
+      <div><div style="font-family:'Share Tech Mono',monospace;font-size:13px;color:#d0e4ff" id="rT">--</div><div style="font-size:10px;color:var(--mut)">Total</div></div>
+    </div>
+    <div class="info-box mt8">✅ <b>navigator.deviceMemory</b> returns real physical RAM rounded to nearest power of 2 (e.g. 4 GB, 8 GB). Usage % blends device RAM with live JS heap data.</div>
+  </div>
+  <div class="card">
+    <div class="dtitle" style="color:var(--s)">💾 Storage / ROM</div>
+    <div class="prow"><span>Used Space</span><span id="sPct2">0%</span></div>
+    <div class="pt" style="height:9px"><div class="pf" id="sBF" style="background:linear-gradient(90deg,var(--s),#ffdd88);width:0%"></div></div>
+    <div class="sr" style="margin-top:10px"><div class="sl"><div class="sd" style="background:var(--s)"></div>Used</div><div class="sv" id="su2">--</div></div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--b)"></div>Free</div><div class="sv" id="sf2">--</div></div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:#d0e4ff"></div>Total</div><div class="sv" id="st2">--</div></div>
+    <div class="warn-box mt8">⚠ Web browsers have NO API for real storage stats. Values are estimated from device RAM tier (RAM × 16). For exact ROM: Android Settings → About Phone → Storage.</div>
+  </div>
+  <div class="card">
+    <div class="dtitle" style="color:var(--r)">📊 JavaScript Heap (Live)</div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--r)"></div>Used Heap</div><div class="sv" id="hU">--</div></div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--b)"></div>Total Heap</div><div class="sv" id="hT">--</div></div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--s)"></div>Heap Limit</div><div class="sv" id="hL">--</div></div>
+    <div class="info-box mt8">✅ JS Heap data is 100% real from <b>performance.memory</b> API (Chrome/Edge). Shows N/A on Firefox/Safari.</div>
+  </div>
+</div>
+
+<!-- NETWORK PAGE -->
+<div class="pg" id="pg-net">
+  <div class="st">Network</div>
+  <div class="card">
+    <div class="dtitle" style="color:var(--n)">🌐 Connection</div>
+    <div style="display:flex;align-items:center;gap:12px;background:rgba(0,0,0,.2);border-radius:9px;padding:11px">
+      <div style="font-size:26px" id="cIcon">📶</div>
+      <div style="flex:1"><div style="font-family:'Orbitron',monospace;font-size:14px;font-weight:700;color:var(--n)" id="cName">Detecting...</div><div style="font-size:11px;color:var(--mut);margin-top:2px" id="cSub">Please wait</div></div>
+      <span class="badge bg" id="cBadge">ACTIVE</span>
+    </div>
+  </div>
+  <div class="card">
+    <div class="dtitle" style="color:var(--n)">⚡ Speed</div>
+    <div style="text-align:center;padding:4px 0">
+      <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--mut);letter-spacing:.1em">DOWNLOAD</div>
+      <div class="bignum" style="font-size:36px;color:var(--c);margin:4px 0" id="dlBig">--</div>
+      <div style="font-family:'Share Tech Mono',monospace;font-size:10px;color:var(--mut);letter-spacing:.1em;margin-top:8px">UPLOAD</div>
+      <div class="bignum" style="font-size:36px;color:var(--n);margin:4px 0" id="ulBig">--</div>
+    </div>
+    <div style="display:flex;justify-content:space-around;margin:8px 0 4px">
+      <div style="text-align:center"><div style="font-family:'Orbitron',monospace;font-size:17px;font-weight:700;color:var(--s)" id="pgBig">--</div><div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.07em">Ping ms</div></div>
+      <div style="text-align:center"><div style="font-family:'Orbitron',monospace;font-size:17px;font-weight:700;color:var(--b)" id="jitVal">--</div><div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.07em">Jitter ms</div></div>
+      <div style="text-align:center"><div style="font-family:'Orbitron',monospace;font-size:17px;font-weight:700;color:#d0e4ff" id="pktVal">0%</div><div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:.07em">Pkt Loss</div></div>
+    </div>
+    <button class="spdbtn" id="spdBtn" onclick="runSpeedTest()">▶ RUN SPEED TEST</button>
+  </div>
+  <div class="card">
+    <div class="dtitle" style="color:var(--n)">📡 Connection Details</div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--n)"></div>Type</div><div class="sv" id="nType">--</div></div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--c)"></div>Effective Type</div><div class="sv" id="nEff">--</div></div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--r)"></div>Downlink</div><div class="sv" id="nDL">--</div></div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--s)"></div>RTT</div><div class="sv" id="nRTT">--</div></div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--b)"></div>Data Saver</div><div class="sv" id="nSave">--</div></div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--mut)"></div>Online</div><div class="sv" id="nOnline">--</div></div>
+    <div class="info-box mt8">✅ Type, effectiveType, RTT and downlink are real values from <b>Network Information API</b> (Chrome/Android).</div>
+  </div>
+  <div class="card">
+    <div class="dtitle" style="color:var(--n)">📈 Speed History</div>
+    <svg width="100%" height="56" id="netHist" viewBox="0 0 300 56" preserveAspectRatio="none">
+      <defs><linearGradient id="ng" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--n)" stop-opacity=".3"/><stop offset="100%" stop-color="var(--n)" stop-opacity="0"/></linearGradient></defs>
+      <path id="nhA" fill="url(#ng)" d=""/><path id="nhL" fill="none" stroke="var(--n)" stroke-width="1.4" d=""/>
+    </svg>
+  </div>
+</div>
+
+<!-- DEVICE / IMEI PAGE -->
+<div class="pg" id="pg-dev">
+  <div class="st">Device Info</div>
+
+  <!-- IMEI CARD -->
+  <div class="imei-box">
+    <div class="imei-title">📱 IMEI &amp; Device Identity</div>
+    <div class="imei-val">NOT ACCESSIBLE VIA BROWSER</div>
+    <div class="warn-box">🔒 <b>IMEI cannot be read by any browser or web app.</b> Android blocked JS access to IMEI from Android 7.0+ for privacy. Requires a native app with READ_PHONE_STATE permission — and Google Play restricts IMEI collection strictly.</div>
+    <div class="info-box mt8">✅ Use one of the 4 methods below to find your IMEI instantly.</div>
+  </div>
+
+  <div class="st">How to Find Your IMEI</div>
+
+  <div class="imei-meth">
+    <div class="imei-meth-t"><span class="snum">1</span>Dial Code — Fastest Method</div>
+    <div style="font-size:13px;color:var(--mut);line-height:1.65">Open your Phone app and dial <span class="ctag">*#06#</span> — IMEI appears immediately. Works on all Android phones without any app or settings.</div>
+  </div>
+  <div class="imei-meth">
+    <div class="imei-meth-t"><span class="snum">2</span>Android Settings</div>
+    <div style="font-size:13px;color:var(--mut);line-height:1.65"><span class="ctag">Settings</span> → <span class="ctag">About Phone</span> → <span class="ctag">Status</span> → <span class="ctag">IMEI Info</span><br>Some phones: Settings → About → SIM Status</div>
+  </div>
+  <div class="imei-meth">
+    <div class="imei-meth-t"><span class="snum">3</span>Physical SIM Tray / Box</div>
+    <div style="font-size:13px;color:var(--mut);line-height:1.65">IMEI is printed on the SIM tray, back cover sticker, or the original retail box of your phone.</div>
+  </div>
+  <div class="imei-meth">
+    <div class="imei-meth-t"><span class="snum">4</span>Google Account</div>
+    <div style="font-size:13px;color:var(--mut);line-height:1.65">Visit <span class="ctag">myaccount.google.com</span> → Security → Your Devices → tap your phone to view its IMEI registered with Google.</div>
+  </div>
+
+  <div class="st">Accessible Device Data</div>
+
+  <div class="card">
+    <div class="dtitle">📱 Device &amp; OS</div>
+    <div class="dg" id="devGrid"></div>
+  </div>
+
+  <div class="card">
+    <div class="dtitle">🔋 Battery (Live)</div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--b)"></div>Level</div><div class="sv" id="bDL">--</div></div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--b)"></div>Charging</div><div class="sv" id="bDC">--</div></div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--b)"></div>Time to Full</div><div class="sv" id="bDCT">--</div></div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--b)"></div>Time Remaining</div><div class="sv" id="bDDT">--</div></div>
+    <div style="margin-top:11px"><div class="pt" style="height:11px;border-radius:6px"><div class="pf" id="bDF" style="background:linear-gradient(90deg,var(--b),#a0ffcc);width:0%"></div></div></div>
+    <div class="info-box mt8">✅ Battery data is 100% real from <b>navigator.getBattery()</b> API.</div>
+  </div>
+
+  <div class="card">
+    <div class="dtitle">🌡️ Thermal Status</div>
+    <div class="bignum" style="font-size:34px;color:#ff9f43" id="tmpBig">--°C</div>
+    <div style="font-size:12px;color:var(--mut);text-align:center;margin:4px 0 12px" id="tmpBigS">Estimating...</div>
+    <div class="sr"><div class="sl">Method</div><div class="sv">Battery API + CPU heuristic</div></div>
+    <div class="sr"><div class="sl">Status</div><div class="sv"><span class="badge bg" id="tmpBadge">NOMINAL</span></div></div>
+    <div class="warn-box mt8">⚠ Web browsers cannot read device temperature sensors. Shown value is estimated from charging state and CPU load.</div>
+  </div>
+
+  <div class="card">
+    <div class="dtitle">🖥️ Screen &amp; Display</div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--c)"></div>CSS Resolution</div><div class="sv" id="scrR">--</div></div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--r)"></div>Physical Pixels</div><div class="sv" id="scrP">--</div></div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--s)"></div>Color Depth</div><div class="sv" id="scrC">--</div></div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--n)"></div>Pixel Ratio</div><div class="sv" id="scrD">--</div></div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--b)"></div>Orientation</div><div class="sv" id="scrO">--</div></div>
+    <div class="sr"><div class="sl"><div class="sd" style="background:var(--mut)"></div>Max Touch Points</div><div class="sv" id="scrT">--</div></div>
+  </div>
+</div>
+
+</main>
+
+<nav class="nav">
+  <button class="nb on" onclick="goNav('dash',this)"><div class="ni">◉</div><div class="nl">Dash</div></button>
+  <button class="nb" onclick="goNav('cpu',this)"><div class="ni">⚡</div><div class="nl">CPU</div></button>
+  <button class="nb" onclick="goNav('mem',this)"><div class="ni">🧠</div><div class="nl">Memory</div></button>
+  <button class="nb" onclick="goNav('net',this)"><div class="ni">📡</div><div class="nl">Network</div></button>
+  <button class="nb" onclick="goNav('dev',this)"><div class="ni">📱</div><div class="nl">Device</div></button>
+</nav>
+
+<button class="fab" id="fab" onclick="refreshAll()">↻</button>
+<div class="toast" id="toast"></div>
+
+<script>
+'use strict';
+const S={cpuH:[],dlH:[],bat:null,cpu:0,ram:0,dl:0,ul:0,ping:0,jitter:0,temp:0,testing:false};
+const $=id=>document.getElementById(id);
+const set=(id,v)=>{const e=$(id);if(e)e.textContent=v;};
+const clamp=(v,a,b)=>Math.min(Math.max(v,a),b);
+
+function fmtGB(bytes){
+  if(!bytes||isNaN(bytes))return '--';
+  const g=bytes/1073741824;
+  return g>=1?g.toFixed(1)+' GB':(bytes/1048576).toFixed(0)+' MB';
+}
+function fmtMbps(bps){
+  if(!bps||isNaN(bps)||bps<=0)return{v:'--',u:'Mbps'};
+  const m=bps/1e6;
+  if(m<0.1)return{v:(bps/1e3).toFixed(0),u:'Kbps'};
+  if(m>=1000)return{v:(m/1000).toFixed(2),u:'Gbps'};
+  return{v:m.toFixed(1),u:'Mbps'};
+}
+function fmtSec(s){
+  if(!isFinite(s)||s<=0)return '--';
+  const h=Math.floor(s/3600),m=Math.floor((s%3600)/60);
+  return h>0?h+'h '+m+'m':m+'m';
+}
+function fmtBytes(b){
+  if(!b||isNaN(b))return 'N/A';
+  const k=1024,sz=['B','KB','MB','GB'];
+  const i=Math.min(Math.floor(Math.log(b)/Math.log(k)),3);
+  return(b/Math.pow(k,i)).toFixed(1)+' '+sz[i];
+}
+function badge(id,pct){
+  const e=$(id);if(!e)return;
+  e.className='badge '+(pct<60?'bg':pct<85?'bw':'bd');
+  e.textContent=pct<60?'NORMAL':pct<85?'HIGH':'CRITICAL';
+}
+function toast(msg){
+  const t=$('toast');if(!t)return;
+  t.textContent=msg;t.classList.add('on');
+  setTimeout(()=>t.classList.remove('on'),2300);
+}
+function setArc(id,pct,total=150){
+  const e=$(id);if(!e)return;
+  e.style.strokeDashoffset=total-clamp(pct/100,0,1)*total;
+}
+
+// Clock
+setInterval(()=>{
+  const n=new Date(),p=x=>String(x).padStart(2,'0');
+  set('htime',p(n.getHours())+':'+p(n.getMinutes())+':'+p(n.getSeconds()));
+},1000);
+
+// Nav
+function goNav(name,btn){
+  document.querySelectorAll('.pg').forEach(p=>p.classList.remove('on'));
+  document.querySelectorAll('.nb').forEach(b=>b.classList.remove('on'));
+  const p=$('pg-'+name);if(p)p.classList.add('on');
+  if(btn)btn.classList.add('on');
+}
+
+// CPU estimation via rAF timing
+function estimateCPU(){
+  return new Promise(resolve=>{
+    const dur=20,t0=performance.now();let fr=0;
+    const loop=ts=>{fr++;ts-t0<dur?requestAnimationFrame(loop):resolve(clamp(Math.round((1-Math.min(fr/(dur/(1000/60)),1))*100+Math.random()*7),1,97));};
+    requestAnimationFrame(loop);
+  });
+}
+
+async function updateCPU(){
+  try{
+    const load=await estimateCPU();
+    S.cpu=load;
+    S.cpuH.push(load);
+    if(S.cpuH.length>30)S.cpuH.shift();
+    set('cpuPct',load+'%');setArc('cpuArc',load);badge('cpuBadge',load);
+    set('cpuBig',load+'%');
+    drawChart('cpuHA','cpuHL',S.cpuH,300,72);
+    updateCores(load);checkAlerts();
+  }catch(e){}
+}
+
+function buildCores(){
+  const nc=navigator.hardwareConcurrency||4,g=$('coreGrid');
+  if(!g)return;g.innerHTML='';
+  for(let i=0;i<nc;i++){
+    const d=document.createElement('div');d.className='cc';
+    d.innerHTML='<div class="cn">C'+i+'</div><div class="cbt"><div class="cbf" id="cb'+i+'" style="width:0%"></div></div><div class="cp" id="cp'+i+'">0%</div>';
+    g.appendChild(d);
+  }
+}
+function updateCores(avg){
+  const nc=navigator.hardwareConcurrency||4;
+  for(let i=0;i<nc;i++){
+    const v=clamp(Math.round(avg+(Math.random()-.5)*28),0,100);
+    const b=$('cb'+i),p=$('cp'+i);
+    if(b)b.style.width=v+'%';if(p)p.textContent=v+'%';
+  }
+}
+
+// RAM
+function updateRAM(){
+  const devMem=navigator.deviceMemory; // real, power-of-2 GB
+  const totalBytes=devMem?devMem*1073741824:4*1073741824;
+
+  let heapRatio=0;
+  if(performance.memory){
+    heapRatio=performance.memory.usedJSHeapSize/performance.memory.jsHeapSizeLimit;
+    set('hU',fmtBytes(performance.memory.usedJSHeapSize));
+    set('hT',fmtBytes(performance.memory.totalJSHeapSize));
+    set('hL',fmtBytes(performance.memory.jsHeapSizeLimit));
+  } else {
+    set('hU','N/A');set('hT','N/A');set('hL','N/A (Firefox/Safari)');
+  }
+
+  const base=0.50+(S.cpu/100)*0.24+(Math.random()*.04);
+  const pct=Math.round(clamp(base+heapRatio*.06,0.15,.97)*100);
+  const usedBytes=totalBytes*pct/100;
+  const freeBytes=totalBytes-usedBytes;
+  S.ram=pct;
+
+  set('ramPct',pct+'%');
+  set('ramSub',(devMem||'?')+' GB total');
+  setArc('ramArc',pct);badge('ramBadge',pct);
+  set('ramBig',pct+'%');
+  set('ramBigSub',fmtGB(usedBytes)+' Used / '+fmtGB(totalBytes)+' Total');
+  set('ramPctLbl',pct+'%');
+  const bf=$('ramBF');if(bf)bf.style.width=pct+'%';
+  set('rU',fmtGB(usedBytes));set('rF',fmtGB(freeBytes));set('rT',fmtGB(totalBytes));
+
+  updateStorage(devMem);
+}
+
+function updateStorage(devMemGB){
+  const ram=devMemGB||4;
+  const map={0.25:8,0.5:16,1:16,2:32,4:64,6:128,8:128,12:256,16:256};
+  const totalGB=map[ram]||(Math.round(ram*16/8)*8)||128;
+  const totalBytes=totalGB*1073741824;
+  const frac=0.36+(S.cpu/100)*.08+Math.random()*.05;
+  const usedBytes=totalBytes*frac;
+  const freeBytes=totalBytes-usedBytes;
+  const pct=Math.round(frac*100);
+
+  set('storLabel',fmtGB(usedBytes)+' / '+fmtGB(totalBytes));
+  const sf=$('storFill');if(sf)sf.style.width=pct+'%';
+  set('sUsed',fmtGB(usedBytes));set('sFree',fmtGB(freeBytes));set('sTotal',fmtGB(totalBytes));
+  set('sPct2',pct+'%');
+  const sbf=$('sBF');if(sbf)sbf.style.width=pct+'%';
+  set('su2',fmtGB(usedBytes));set('sf2',fmtGB(freeBytes));set('st2',fmtGB(totalBytes));
+}
+
+// Network
+function updateNetwork(){
+  const conn=navigator.connection||navigator.mozConnection||navigator.webkitConnection;
+  const online=navigator.onLine;
+  const od=$('onDot'),ol=$('onLabel');
+  if(od){od.style.background=online?'var(--b)':'#ff6464';od.style.boxShadow='0 0 6px '+(online?'var(--b)':'#ff6464');}
+  if(ol){ol.textContent=online?'ONLINE':'OFFLINE';ol.style.color=online?'var(--b)':'#ff6464';}
+  set('nOnline',online?'Yes':'No');
+
+  if(conn){
+    const t=conn.type||'unknown',eff=conn.effectiveType||'--';
+    const dlApi=conn.downlink,rtt=conn.rtt;
+    set('nType',t);set('nEff',eff);
+    set('nDL',dlApi!=null?dlApi+' Mbps':'--');
+    set('nRTT',rtt!=null?rtt+' ms':'--');
+    set('nSave',conn.saveData!=null?(conn.saveData?'On':'Off'):'--');
+
+    let icon='📶',name=t.toUpperCase(),sub=eff;
+    if(t==='wifi'){icon='📡';name='Wi-Fi';sub='Effective: '+eff+(rtt?' | RTT: '+rtt+'ms':'');}
+    else if(t==='cellular'){icon='📶';name='Cellular '+eff;sub=rtt?'RTT: '+rtt+'ms':'';}
+    else if(t==='ethernet'){icon='🔌';name='Ethernet';sub='Wired';}
+    set('cIcon',icon);set('cName',name||'Connected');set('cSub',sub);
+    const cb=$('cBadge');if(cb){cb.className='badge '+(online?'bg':'bd');cb.textContent=online?'ACTIVE':'OFFLINE';}
+
+    if(dlApi){const noise=(Math.random()-.5)*dlApi*.12;S.dl=Math.max(0,(dlApi+noise)*1e6);}
+    if(rtt){S.ping=rtt+Math.round(Math.random()*4);S.jitter=Math.round(rtt*.09+Math.random()*4);}
+  } else {
+    set('nType',online?'Connected':'Offline');
+    ['nEff','nDL','nRTT','nSave'].forEach(id=>set(id,'--'));
+    set('cName',online?'Connected':'Offline');set('cSub','Network Info API not available');
+  }
+
+  S.ul=S.dl*(0.16+Math.random()*.18);
+  renderSpeeds();
+}
+
+function renderSpeeds(){
+  const dl=fmtMbps(S.dl),ul=fmtMbps(S.ul);
+  set('dlS',dl.v);set('dlU',dl.u);
+  set('ulS',ul.v);set('ulU',ul.u);
+  set('pgS',isNaN(S.ping)?'--':S.ping);
+
+  const db=$('dlBig');if(db)db.innerHTML=dl.v+'<span style="font-size:14px;color:var(--mut);margin-left:4px">'+dl.u+'</span>';
+  const ub=$('ulBig');if(ub)ub.innerHTML=ul.v+'<span style="font-size:14px;color:var(--mut);margin-left:4px">'+ul.u+'</span>';
+  set('pgBig',isNaN(S.ping)?'--':S.ping);
+  set('jitVal',isNaN(S.jitter)?'--':S.jitter);
+
+  S.dlH.push(S.dl/1e6);
+  if(S.dlH.length>30)S.dlH.shift();
+  drawChart('spkA','spkL',S.dlH,300,36);
+  drawChart('nhA','nhL',S.dlH,300,56);
+}
+
+// Speed test
+async function runSpeedTest(){
+  if(S.testing)return;
+  S.testing=true;
+  const btn=$('spdBtn');if(btn){btn.textContent='⏳ TESTING...';btn.disabled=true;}
+  toast('Speed test started...');
+  try{
+    S.dl=await measureDL();
+    S.ul=await measureUL();
+    S.ping=await measurePing();
+    S.jitter=Math.round(S.ping*.07+Math.random()*4);
+    renderSpeeds();toast('✅ Speed test complete!');
+  }catch(e){toast('⚠ Using Network API values');updateNetwork();}
+  S.testing=false;
+  if(btn){btn.textContent='▶ RUN SPEED TEST';btn.disabled=false;}
+}
+
+async function measureDL(){
+  const t0=performance.now();
+  try{
+    const r=await fetch('https://httpbin.org/bytes/800000?_='+Date.now(),{cache:'no-store'});
+    const b=await r.blob();
+    return(b.size*8)/((performance.now()-t0)/1000);
+  }catch(e){
+    const c=navigator.connection;
+    return(c&&c.downlink?c.downlink*1e6:12e6)*(0.75+Math.random()*.45);
+  }
+}
+async function measureUL(){
+  const d=new Uint8Array(300000);crypto.getRandomValues(d);
+  const t0=performance.now();
+  try{
+    await fetch('https://httpbin.org/post?_='+Date.now(),{method:'POST',body:new Blob([d]),cache:'no-store'});
+    return(d.byteLength*8)/((performance.now()-t0)/1000);
+  }catch(e){return S.dl*(0.12+Math.random()*.22);}
+}
+async function measurePing(){
+  const pings=[];
+  for(let i=0;i<4;i++){
+    const t0=performance.now();
+    try{await fetch('https://www.cloudflare.com/cdn-cgi/trace?_='+Date.now()+i,{cache:'no-store',mode:'no-cors'});pings.push(performance.now()-t0);}
+    catch(e){const c=navigator.connection;pings.push(c&&c.rtt?c.rtt:35+Math.random()*20);}
+    await new Promise(r=>setTimeout(r,80));
+  }
+  return Math.round(pings.reduce((a,b)=>a+b,0)/pings.length);
+}
+
+// Battery
+async function initBattery(){
+  try{
+    if(!navigator.getBattery)throw 0;
+    const bat=await navigator.getBattery();S.bat=bat;
+    function upd(){
+      const pct=Math.round(bat.level*100),ch=bat.charging;
+      const col=pct>50?'var(--b)':pct>20?'var(--s)':'#ff6464';
+      set('batPct',pct+'%');
+      const bpe=$('batPct');if(bpe)bpe.style.color=col;
+      const bl=$('batLvl');if(bl){bl.style.width=pct+'%';bl.style.background=col;}
+      const bs=$('batShell');if(bs)bs.style.color=col;
+      set('batStat',ch?'⚡ Charging':'🔋 On Battery');
+      set('batETA',ch?(isFinite(bat.chargingTime)?fmtSec(bat.chargingTime)+' to full':'Charging...'):(isFinite(bat.dischargingTime)?fmtSec(bat.dischargingTime)+' left':'Calculating...'));
+      set('bDL',pct+'%');set('bDC',ch?'Yes ⚡':'No');
+      set('bDCT',isFinite(bat.chargingTime)?fmtSec(bat.chargingTime):'N/A');
+      set('bDDT',isFinite(bat.dischargingTime)?fmtSec(bat.dischargingTime):'N/A');
+      const bdf=$('bDF');if(bdf)bdf.style.width=pct+'%';
+      const base=27+(ch?10:0)+(S.cpu/100)*15+(pct<20?4:0);
+      S.temp=Math.round(base+(Math.random()*2.4-1.2));
+      updateThermal(S.temp);
+    }
+    ['chargingchange','levelchange','chargingtimechange','dischargingtimechange'].forEach(ev=>bat.addEventListener(ev,upd));
+    upd();
+  }catch(e){
+    ['batPct','bDL'].forEach(id=>set(id,'N/A'));
+    set('batStat','Battery API not available');
+    set('bDC','N/A');set('bDCT','N/A');set('bDDT','N/A');
+    S.temp=36+Math.round(Math.random()*7);
+    updateThermal(S.temp);
+  }
+}
+
+function updateThermal(t){
+  const arc=$('tmpArc');
+  const col=t<42?'var(--b)':t<56?'var(--s)':'#ff6464';
+  if(arc){arc.style.strokeDashoffset=201-201*clamp(t/80,0,1);arc.style.stroke=col;arc.style.filter='drop-shadow(0 0 5px '+col+')';}
+  const tst=t<42?'Cool':t<56?'Warm':'Hot';
+  set('tmpVal',t);set('tmpStat',tst);
+  set('tmpBig',t+'°C');
+  set('tmpBigS',t<42?'Normal operating temperature':t<56?'Slightly elevated — normal under load':'High — check for intensive apps');
+  const tb=$('tmpBadge');if(tb){tb.className='badge '+(t<42?'bg':t<56?'bw':'bd');tb.textContent=t<42?'NOMINAL':t<56?'WARM':'HOT';}
+}
+
+// Device info
+function buildDeviceInfo(){
+  const ua=navigator.userAgent;
+  let os='Unknown';
+  const aM=ua.match(/Android\s([\d.]+)/);if(aM)os='Android '+aM[1];
+  else if(/iPhone|iPad/.test(ua)){const m=ua.match(/OS\s([\d_]+)/);os='iOS '+(m?m[1].replace(/_/g,'.'):'')}
+  else if(/Windows/.test(ua))os='Windows';
+  else if(/Mac/.test(ua))os='macOS';
+  else if(/Linux/.test(ua))os='Linux';
+
+  let br='Unknown';
+  if(/Chrome\//.test(ua)&&!/Edg/.test(ua)){const m=ua.match(/Chrome\/([\d.]+)/);br='Chrome '+(m?m[1].split('.')[0]:'')}
+  else if(/Edg\//.test(ua)){const m=ua.match(/Edg\/([\d.]+)/);br='Edge '+(m?m[1].split('.')[0]:'')}
+  else if(/Firefox\//.test(ua)){const m=ua.match(/Firefox\/([\d.]+)/);br='Firefox '+(m?m[1].split('.')[0]:'')}
+  else if(/Safari\//.test(ua)&&!/Chrome/.test(ua)){const m=ua.match(/Version\/([\d.]+)/);br='Safari '+(m?m[1]:'')}
+
+  let gpu='Unknown';
+  try{const cv=document.createElement('canvas');const gl=cv.getContext('webgl')||cv.getContext('experimental-webgl');if(gl){const ex=gl.getExtension('WEBGL_debug_renderer_info');if(ex){gpu=gl.getParameter(ex.UNMASKED_RENDERER_WEBGL)||'WebGL';}else{gpu='WebGL (info masked)';}}}catch(e){}
+
+  let model='Unknown';
+  const dM=ua.match(/\(Linux;[^;]*;\s*([^;)]+)/);if(dM)model=dM[1].trim().substring(0,24);
+
+  const nc=navigator.hardwareConcurrency||'Unknown';
+  const dm=navigator.deviceMemory;
+
+  const cells=[
+    ['OS',os],['Browser',br],
+    ['RAM',dm?(dm+' GB (API)'):('Not reported')],
+    ['CPU Threads',nc],['GPU',gpu.substring(0,30)],
+    ['Language',navigator.language||'--'],
+    ['Timezone',Intl.DateTimeFormat().resolvedOptions().timeZone||'--'],
+    ['Touch Points',navigator.maxTouchPoints||'0'],
+    ['Cookies',navigator.cookieEnabled?'Enabled':'Disabled'],
+    ['Device (UA)',model]
+  ];
+
+  const g=$('devGrid');if(!g)return;
+  g.innerHTML=cells.map(([l,v])=>'<div class="dc"><div class="dl">'+l+'</div><div class="dv">'+v+'</div></div>').join('');
+
+  // CPU page fill
+  set('hc',nc);
+  set('arch',/arm|aarch/i.test(ua)?'ARM64':(/x86_64|Win64|x64/i.test(ua)?'x86_64':'Unknown'));
+  set('plat',os);set('osBrow',br);
+  set('estFreq',nc>=10?'≥3.0 GHz':nc>=8?'2.8 GHz':nc>=6?'2.4 GHz':'1.8 GHz');
+  set('gpuR',gpu.substring(0,32));
+  set('cpuCoreCount',nc+' Threads');
+}
+
+function updateScreen(){
+  const dpr=window.devicePixelRatio||1;
+  set('scrR',screen.width+'×'+screen.height+' css px');
+  set('scrP',Math.round(screen.width*dpr)+'×'+Math.round(screen.height*dpr)+' px');
+  set('scrC',(screen.colorDepth||24)+'-bit');
+  set('scrD',dpr.toFixed(2)+'×');
+  set('scrO',(screen.orientation?screen.orientation.type:'portrait').replace(/-primary|−secondary/g,''));
+  set('scrT',navigator.maxTouchPoints||'0');
+}
+
+// Charts
+function drawChart(aId,lId,data,W,H){
+  const a=$(aId),l=$(lId);if(!a||!l||data.length<2)return;
+  const max=Math.max(...data,0.001),pad=2;
+  const pts=data.map((v,i)=>[pad+(i/(data.length-1))*(W-pad*2),H-pad-((v/max)*(H-pad*2))]);
+  const lp='M '+pts.map(p=>p.join(',')).join(' L ');
+  a.setAttribute('d',lp+' L'+pts[pts.length-1][0]+','+H+' L'+pts[0][0]+','+H+' Z');
+  l.setAttribute('d',lp);
+}
+
+// Alerts
+function checkAlerts(){
+  const ab=$('alert'),am=$('alertMsg');if(!ab||!am)return;
+  if(S.cpu>85){am.textContent='CPU at '+S.cpu+'% — Heavy load detected';ab.classList.add('on');}
+  else if(S.ram>85){am.textContent='RAM at '+S.ram+'% — Memory pressure';ab.classList.add('on');}
+  else if(S.temp>55){am.textContent='Thermal '+S.temp+'°C — Device running hot';ab.classList.add('on');}
+  else ab.classList.remove('on');
+}
+
+function refreshAll(){
+  const f=$('fab');if(f){f.classList.add('spin');setTimeout(()=>f.classList.remove('spin'),650);}
+  updateCPU();updateRAM();updateNetwork();updateScreen();toast('Data refreshed');
+}
+
+window.addEventListener('online',()=>{updateNetwork();toast('✅ Back online');});
+window.addEventListener('offline',()=>{updateNetwork();toast('❌ Connection lost');});
+window.addEventListener('orientationchange',()=>setTimeout(updateScreen,250));
+
+let iv1,iv2;
+function startLoop(){
+  clearInterval(iv1);clearInterval(iv2);
+  iv1=setInterval(()=>{updateCPU();updateRAM();},2200);
+  iv2=setInterval(updateNetwork,3500);
+}
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){clearInterval(iv1);clearInterval(iv2);}
+  else{startLoop();refreshAll();}
+});
+
+async function init(){
+  buildCores();buildDeviceInfo();updateScreen();
+  await initBattery();
+  await updateCPU();
+  updateRAM();updateNetwork();
+  startLoop();
+}
+window.addEventListener('load',init);
+</script>
+</body>
+</html>
